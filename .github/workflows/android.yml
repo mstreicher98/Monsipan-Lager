@@ -67,7 +67,9 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon assembleRelease
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon assembleRelease
 
       - name: APK benennen
         run: cp android/app/build/outputs/apk/release/app-release*.apk monsipan-lager.apk
