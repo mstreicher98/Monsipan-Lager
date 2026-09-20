@@ -14,7 +14,7 @@
 	);
 </script>
 
-<svelte:head><title>{title} – Monsipan Lager</title></svelte:head>
+<svelte:head><title>{title} – Monsipan Lagermanagement</title></svelte:head>
 
 <main class="grid min-h-dvh place-items-center px-6">
 	<div class="max-w-md text-center">

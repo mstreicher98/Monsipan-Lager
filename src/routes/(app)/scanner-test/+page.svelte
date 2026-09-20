@@ -153,7 +153,7 @@
 	function protocol(r: ReportEntry): string {
 		const { report } = r;
 		const lines = [
-			'Monsipan Lager – Scanner-Protokoll',
+			'Monsipan Lagermanagement – Scanner-Protokoll',
 			`Zeit: ${r.at.toLocaleString('de-AT')}`,
 			`Browser: ${navigator.userAgent}`,
 			`Ergebnis: ${VERDICTS[report.verdict].label}${report.note ? ` (${report.note})` : ''}`,
@@ -179,7 +179,7 @@
 	}
 </script>
 
-<svelte:head><title>Scanner testen – Monsipan Lager</title></svelte:head>
+<svelte:head><title>Scanner testen – Monsipan Lagermanagement</title></svelte:head>
 
 <div class="flex flex-wrap items-end justify-between gap-3 pt-2 pb-5">
 	<div>

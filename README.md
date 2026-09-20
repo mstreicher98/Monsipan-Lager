@@ -1,4 +1,4 @@
-# Monsipan Lager
+# Monsipan Lagermanagement
 
 Lagerverwaltung für die Bodenmarkierung: Bestand je Lagerort, Ein-/Ausbuchen per Scan,
 Umlagern, Rückgaben, Inventur, Bestellliste mit Warn-Mails und Auswertungen.

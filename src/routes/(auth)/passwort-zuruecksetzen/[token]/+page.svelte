@@ -6,7 +6,7 @@
 	let busy = $state(false);
 </script>
 
-<svelte:head><title>Neues Passwort – Monsipan Lager</title></svelte:head>
+<svelte:head><title>Neues Passwort – Monsipan Lagermanagement</title></svelte:head>
 
 {#if data.valid}
 	<h1 class="text-3xl">Neues Passwort</h1>

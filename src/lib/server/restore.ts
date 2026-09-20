@@ -83,7 +83,7 @@ export async function inspectBackup(file: string): Promise<BackupContents> {
 		if (String(check.rows[0]?.[0] ?? '') !== 'ok') throw new RestoreError('Die Datei ist beschädigt.');
 		const names = new Set(await tableNames(c));
 		for (const t of NEEDED_TABLES) {
-			if (!names.has(t)) throw new RestoreError('Diese Datei ist keine Sicherung vom Monsipan Lager.');
+			if (!names.has(t)) throw new RestoreError('Diese Datei ist keine Sicherung vom Monsipan Lagermanagement.');
 		}
 		const count = async (table: string) => Number((await c.execute(`select count(*) as n from "${table}"`)).rows[0].n ?? 0);
 		const stat = fs.statSync(file);

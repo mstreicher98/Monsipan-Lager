@@ -69,7 +69,7 @@
 	};
 </script>
 
-<svelte:head><title>Bewegungen – Monsipan Lager</title></svelte:head>
+<svelte:head><title>Bewegungen – Monsipan Lagermanagement</title></svelte:head>
 
 <div class="flex flex-wrap items-end justify-between gap-3 pt-2 pb-5">
 	<div>

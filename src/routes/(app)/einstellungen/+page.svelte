@@ -89,7 +89,7 @@
 		};
 </script>
 
-<svelte:head><title>Einstellungen – Monsipan Lager</title></svelte:head>
+<svelte:head><title>Einstellungen – Monsipan Lagermanagement</title></svelte:head>
 
 <div class="pt-2 pb-5">
 	<h1 class="text-[2rem] leading-tight">Einstellungen</h1>

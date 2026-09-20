@@ -10,7 +10,7 @@
 	const bookedBy = (r: (typeof data.rows)[number]) => fullName({ firstName: r.userFirst, lastName: r.userLast }) || r.username;
 </script>
 
-<svelte:head><title>Bewegungen drucken – Monsipan Lager</title></svelte:head>
+<svelte:head><title>Bewegungen drucken – Monsipan Lagermanagement</title></svelte:head>
 
 <PrintSheet title="Bewegungen" facts={data.facts} notice={data.notice} {back}>
 	<table class="print-table mt-3">

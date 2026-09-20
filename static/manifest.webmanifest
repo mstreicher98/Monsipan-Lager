@@ -1,6 +1,6 @@
 {
-	"name": "Monsipan Lager",
-	"short_name": "Lager",
+	"name": "Monsipan Lagermanagement",
+	"short_name": "Lagermanagement",
 	"description": "Lagerbestand scannen, buchen und nachbestellen",
 	"lang": "de-AT",
 	"start_url": "/",

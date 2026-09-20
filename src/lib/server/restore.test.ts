@@ -48,7 +48,7 @@ describe('Sicherung prüfen', () => {
 		const c = createClient({ url: `file:${file}` });
 		await c.execute('create table irgendwas (id integer primary key)');
 		c.close();
-		await expect(inspectBackup(file)).rejects.toThrow(/Monsipan Lager/);
+		await expect(inspectBackup(file)).rejects.toThrow(/Monsipan Lagermanagement/);
 	});
 
 	it('liest die Zahlen einer echten Sicherung', async () => {

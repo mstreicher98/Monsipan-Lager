@@ -16,7 +16,7 @@
 	{#if !compact}
 		<span class="leading-none">
 			<span class="block font-display text-[1.0625rem] font-semibold tracking-tight text-ink">Monsipan</span>
-			<span class="block text-[0.8125rem] text-ink-3">Lager</span>
+			<span class="block text-[0.75rem] whitespace-nowrap text-ink-3">Lagermanagement</span>
 		</span>
 	{/if}
 </span>

@@ -33,7 +33,7 @@
 	const sum = $derived(data.view === 'verbrauch' ? data.totals!.reduce((s, c) => s + c.qty, 0) : 0);
 </script>
 
-<svelte:head><title>Berichte – Monsipan Lager</title></svelte:head>
+<svelte:head><title>Berichte – Monsipan Lagermanagement</title></svelte:head>
 
 <div class="flex flex-wrap items-end justify-between gap-3 pt-2 pb-5">
 	<div>

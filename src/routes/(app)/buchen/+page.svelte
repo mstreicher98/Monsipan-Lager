@@ -265,7 +265,7 @@
 	});
 </script>
 
-<svelte:head><title>{meta.verb} – Monsipan Lager</title></svelte:head>
+<svelte:head><title>{meta.verb} – Monsipan Lagermanagement</title></svelte:head>
 
 <div class="pt-2 pb-4">
 	<h1 class="text-[2rem] leading-tight">Buchen</h1>

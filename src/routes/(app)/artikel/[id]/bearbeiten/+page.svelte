@@ -28,7 +28,7 @@
 	);
 </script>
 
-<svelte:head><title>{p.name} bearbeiten – Monsipan Lager</title></svelte:head>
+<svelte:head><title>{p.name} bearbeiten – Monsipan Lagermanagement</title></svelte:head>
 
 <a href="/artikel/{p.id}" class="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-ink-2 hover:text-ink"><ArrowLeft size={16} aria-hidden="true" />{p.name}</a>
 <div class="mt-3 mb-5 flex flex-wrap items-end justify-between gap-3">

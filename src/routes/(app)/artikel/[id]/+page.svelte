@@ -73,7 +73,7 @@
 	const yearTotal = $derived(consumption.reduce((s, c) => s + c.qty, 0));
 </script>
 
-<svelte:head><title>{p.name} – Monsipan Lager</title></svelte:head>
+<svelte:head><title>{p.name} – Monsipan Lagermanagement</title></svelte:head>
 
 <a href="/bestand" class="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-ink-2 hover:text-ink">
 	<ArrowLeft size={16} aria-hidden="true" />Bestand

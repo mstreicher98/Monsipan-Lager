@@ -8,7 +8,7 @@
 	let busy = $state(false);
 </script>
 
-<svelte:head><title>Passwort vergessen – Monsipan Lager</title></svelte:head>
+<svelte:head><title>Passwort vergessen – Monsipan Lagermanagement</title></svelte:head>
 
 {#if form?.sent}
 	<div in:fade={{ duration: 200 }}>

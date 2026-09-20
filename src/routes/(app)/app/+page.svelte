@@ -26,7 +26,7 @@
 	}
 </script>
 
-<svelte:head><title>App fürs Handy – Monsipan Lager</title></svelte:head>
+<svelte:head><title>App fürs Handy – Monsipan Lagermanagement</title></svelte:head>
 
 <div class="pt-2 pb-5">
 	<h1 class="flex items-center gap-2 text-[2rem] leading-tight"><Smartphone size={26} aria-hidden="true" />App fürs Handy</h1>

@@ -86,7 +86,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: app
-          name: Monsipan Lager – Android-App
+          name: Monsipan Lagermanagement – Android-App
           make_latest: false
           body: |
             Android-App zum Seitenladen (Version 1.0.${{ github.run_number }}).

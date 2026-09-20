@@ -20,7 +20,7 @@
 	const initial = $derived(form?.values ? { ...empty, ...(form.values as Partial<typeof empty>) } : empty);
 </script>
 
-<svelte:head><title>Neuer Artikel – Monsipan Lager</title></svelte:head>
+<svelte:head><title>Neuer Artikel – Monsipan Lagermanagement</title></svelte:head>
 
 <a href="/bestand" class="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-ink-2 hover:text-ink"><ArrowLeft size={16} aria-hidden="true" />Bestand</a>
 <h1 class="mt-3 mb-5 text-[2rem] leading-tight">Neuer Artikel</h1>

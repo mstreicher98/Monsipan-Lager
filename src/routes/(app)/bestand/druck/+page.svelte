@@ -9,7 +9,7 @@
 	const low = (i: (typeof data.items)[number]) => i.minStock != null && i.minStock > 0 && i.total <= i.minStock;
 </script>
 
-<svelte:head><title>Bestandsliste drucken – Monsipan Lager</title></svelte:head>
+<svelte:head><title>Bestandsliste drucken – Monsipan Lagermanagement</title></svelte:head>
 
 <PrintSheet title="Bestandsliste" facts={data.facts} notice={data.notice} {back}>
 	<table class="print-table mt-3">

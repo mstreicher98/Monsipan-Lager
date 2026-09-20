@@ -36,7 +36,7 @@ services:
       SMTP_SECURE: ${SMTP_SECURE:-false}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
-      MAIL_FROM: '${MAIL_FROM:-Monsipan Lager <lager@monsipan.at>}'
+      MAIL_FROM: '${MAIL_FROM:-Monsipan Lagermanagement <lager@monsipan.at>}'
 
       # Beispieldaten beim allerersten Start (im Echtbetrieb false lassen)
       DEMO_DATA: ${DEMO_DATA:-false}

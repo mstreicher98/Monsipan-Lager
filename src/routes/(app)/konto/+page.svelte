@@ -18,7 +18,7 @@
 		};
 </script>
 
-<svelte:head><title>Mein Konto – Monsipan Lager</title></svelte:head>
+<svelte:head><title>Mein Konto – Monsipan Lagermanagement</title></svelte:head>
 
 <div class="pt-2 pb-5">
 	<h1 class="text-[2rem] leading-tight">Mein Konto</h1>

@@ -57,7 +57,7 @@
 	const lastMonth = $derived(consumption.at(-2)?.qty ?? 0);
 </script>
 
-<svelte:head><title>Übersicht – Monsipan Lager</title></svelte:head>
+<svelte:head><title>Übersicht – Monsipan Lagermanagement</title></svelte:head>
 
 <div class="flex flex-wrap items-end justify-between gap-4 pt-2 pb-6">
 	<div>

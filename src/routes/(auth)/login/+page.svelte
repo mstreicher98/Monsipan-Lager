@@ -9,7 +9,7 @@
 	let busy = $state(false);
 </script>
 
-<svelte:head><title>Anmelden – Monsipan Lager</title></svelte:head>
+<svelte:head><title>Anmelden – Monsipan Lagermanagement</title></svelte:head>
 
 <h1 class="text-3xl">Anmelden</h1>
 <p class="mt-1 text-ink-2">Mit Benutzername oder E-Mail-Adresse.</p>
