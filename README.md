@@ -45,8 +45,9 @@ kann sich danach nicht mehr anmelden und verschwindet aus der Liste; der Name bl
 Historie erhalten, Benutzername und E-Mail werden frei.
 
 **Inhaber:** Genau ein Konto ist Inhaber – zu Beginn der erste Admin. Nur der Inhaber darf
-Admins löschen, deaktivieren oder herabstufen und deren Passwort zurücksetzen; alle übrigen
-Benutzer verwaltet jeder Admin wie bisher. Das Inhaber-Konto selbst kann niemand löschen,
+Admins löschen, deaktivieren oder herabstufen; alle übrigen Benutzer verwaltet jeder Admin
+wie bisher, und das Passwort eines anderen Admins darf auch jeder Admin zurücksetzen –
+nur beim Inhaber-Konto nicht. Das Inhaber-Konto selbst kann niemand löschen,
 deaktivieren oder herabstufen, auch der Inhaber nicht. Unter **Benutzer → Inhaber-Konto**
 lässt sich die Inhaberschaft mit Passwortbestätigung an einen anderen aktiven Admin
 übergeben; der bisherige Inhaber bleibt Admin. Beim Zurücksetzen aller Daten bleibt das
