@@ -1,0 +1,64 @@
+# Stack für Portainer – nimmt das fertige Image aus der GitHub Registry (GHCR).
+#
+# Portainer → Stacks → Add stack → Repository:
+#   Repository URL:      https://github.com/mstreicher98/Monsipan-Lager
+#   Compose path:        portainer-stack.yml
+#   Environment variables: siehe unten (mindestens ORIGIN setzen)
+#
+# Ist das Paket in GitHub auf privat gestellt, vorher in Portainer unter
+# Registries eine GHCR-Registry mit GitHub-Benutzer und einem Token
+# (Scope read:packages) anlegen – sonst kann Portainer das Image nicht ziehen.
+
+services:
+  app:
+    image: ghcr.io/mstreicher98/monsipan-lager:latest
+    restart: unless-stopped
+    environment:
+      # Pflicht: die öffentliche Adresse hinter dem Cloudflare Tunnel.
+      # Ohne passende ORIGIN lehnt SvelteKit alle Formulare ab („Cross-site POST“).
+      ORIGIN: ${ORIGIN:-https://lager.monsipan.at}
+      # Echte Besucher-IP hinter dem Tunnel (für die Sperre bei falschen Passwörtern)
+      ADDRESS_HEADER: Cf-Connecting-Ip
+      TZ: Europe/Vienna
+
+      # Erster Admin – wird nur beim allerersten Start angelegt.
+      # Ohne Passwort erzeugt die App eines und zeigt es einmalig im Log.
+      INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:-admin}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
+
+      # E-Mail (Passwort vergessen, Einladungen, Warnungen zum Mindestbestand).
+      # Ohne SMTP funktioniert alles außer E-Mail.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: '${MAIL_FROM:-Monsipan Lager <lager@monsipan.at>}'
+
+      # Beispieldaten beim allerersten Start (im Echtbetrieb false lassen)
+      DEMO_DATA: ${DEMO_DATA:-false}
+
+    volumes:
+      # Datenbank und Sicherungen – hier liegen alle Daten
+      - lager-data:/data
+
+    # Variante A (Standard): Port am Server veröffentlichen.
+    # Im Cloudflare Tunnel als Service dann http://<Server-IP>:3000 eintragen
+    # (läuft cloudflared mit network_mode: host, geht auch http://localhost:3000).
+    ports:
+      - '3000:3000'
+
+    # Variante B: cloudflared läuft als Container in einem eigenen Docker-Netz.
+    # Dann oben die Ports weglassen, hier und unten die Zeilen aktivieren und
+    # im Tunnel http://app:3000 eintragen.
+    # networks:
+    #   - tunnel
+
+# networks:
+#   tunnel:
+#     external: true
+#     name: NAME-DES-BESTEHENDEN-NETZES
+
+volumes:
+  lager-data:

@@ -1,0 +1,38 @@
+# Start:   docker compose up -d --build
+# Logs:    docker compose logs -f app
+# Update:  git pull && docker compose up -d --build
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      ORIGIN: https://${DOMAIN}
+      # echte Client-IP hinter Caddy (für die Sperre bei falschen Passwörtern)
+      ADDRESS_HEADER: X-Forwarded-For
+      XFF_DEPTH: '1'
+    volumes:
+      - lager-data:/data
+    expose:
+      - '3000'
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  lager-data:
+  caddy-data:
+  caddy-config:

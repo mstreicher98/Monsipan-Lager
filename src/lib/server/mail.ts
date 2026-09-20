@@ -1,0 +1,140 @@
+import nodemailer, { type Transporter } from 'nodemailer';
+import { env } from '$env/dynamic/private';
+
+let transporter: Transporter | null = null;
+
+export function isMailConfigured(): boolean {
+	return Boolean(env.SMTP_HOST);
+}
+
+export function mailInfo() {
+	return {
+		configured: isMailConfigured(),
+		host: env.SMTP_HOST ?? '',
+		from: env.MAIL_FROM ?? env.SMTP_USER ?? ''
+	};
+}
+
+function getTransporter(): Transporter | null {
+	if (!isMailConfigured()) return null;
+	transporter ??= nodemailer.createTransport({
+		host: env.SMTP_HOST,
+		port: Number(env.SMTP_PORT || 587),
+		secure: env.SMTP_SECURE === 'true' || env.SMTP_PORT === '465',
+		auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined
+	});
+	return transporter;
+}
+
+interface Mail {
+	to: string | string[];
+	subject: string;
+	text: string;
+	html: string;
+}
+
+/** Ohne SMTP-Konfiguration landet die Mail im Server-Log statt im Postfach. */
+export async function sendMail(mail: Mail): Promise<boolean> {
+	const t = getTransporter();
+	const to = Array.isArray(mail.to) ? mail.to.join(', ') : mail.to;
+	if (!t) {
+		console.info(`[mail] SMTP nicht eingerichtet – Mail an ${to}: ${mail.subject}\n${mail.text}\n`);
+		return false;
+	}
+	try {
+		await t.sendMail({
+			from: env.MAIL_FROM || env.SMTP_USER,
+			to,
+			subject: mail.subject,
+			text: mail.text,
+			html: mail.html
+		});
+		return true;
+	} catch (err) {
+		console.error('[mail] Versand fehlgeschlagen:', err);
+		return false;
+	}
+}
+
+/* ------------------------------------------------------------- Vorlagen */
+
+const esc = (s: string) =>
+	s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+
+function layout(title: string, body: string): string {
+	return `<!doctype html><html lang="de"><body style="margin:0;background:#f3f4f5;font-family:Segoe UI,Arial,sans-serif;color:#1d2127">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e3e5e8">
+<tr><td style="height:6px;background:repeating-linear-gradient(90deg,#f8f000 0 28px,transparent 28px 44px);background-color:#1d2127"></td></tr>
+<tr><td style="padding:28px 28px 8px"><div style="font-size:13px;color:#5c626b">Monsipan Lager</div>
+<h1 style="margin:6px 0 0;font-size:22px;line-height:1.3">${esc(title)}</h1></td></tr>
+<tr><td style="padding:12px 28px 28px;font-size:15px;line-height:1.6">${body}</td></tr>
+</table></td></tr></table></body></html>`;
+}
+
+function button(href: string, label: string): string {
+	return `<p style="margin:24px 0"><a href="${esc(href)}" style="display:inline-block;background:#f8f000;color:#1d2127;font-weight:600;text-decoration:none;padding:12px 20px;border-radius:10px">${esc(label)}</a></p>`;
+}
+
+export function passwordResetMail(to: string, name: string, link: string): Mail {
+	return {
+		to,
+		subject: 'Passwort zurücksetzen – Monsipan Lager',
+		text: `Hallo ${name},\n\nüber diesen Link legst du ein neues Passwort fest (gültig 60 Minuten):\n${link}\n\nWenn du das nicht angefordert hast, kannst du diese Mail ignorieren.`,
+		html: layout(
+			'Neues Passwort festlegen',
+			`<p>Hallo ${esc(name)},</p><p>über den Button legst du ein neues Passwort fest. Der Link ist 60 Minuten gültig.</p>${button(link, 'Passwort festlegen')}<p style="color:#5c626b;font-size:13px">Wenn du das nicht angefordert hast, kannst du diese Mail ignorieren.</p>`
+		)
+	};
+}
+
+export function inviteMail(to: string, name: string, username: string, link: string): Mail {
+	return {
+		to,
+		subject: 'Dein Zugang zum Monsipan Lager',
+		text: `Hallo ${name},\n\nfür dich wurde ein Zugang angelegt. Benutzername: ${username}\nLege über diesen Link dein Passwort fest (gültig 7 Tage):\n${link}`,
+		html: layout(
+			'Dein Zugang ist bereit',
+			`<p>Hallo ${esc(name)},</p><p>für dich wurde ein Zugang zum Lagersystem angelegt. Dein Benutzername ist <strong>${esc(username)}</strong>.</p>${button(link, 'Passwort festlegen')}<p style="color:#5c626b;font-size:13px">Der Link ist 7 Tage gültig.</p>`
+		)
+	};
+}
+
+export interface LowStockItem {
+	name: string;
+	articleNumber: string | null;
+	total: number;
+	minStock: number;
+}
+
+export function lowStockMail(to: string[], items: LowStockItem[], link: string): Mail {
+	const rows = items
+		.map(
+			(i) =>
+				`<tr><td style="padding:8px 0;border-bottom:1px solid #e3e5e8">${esc(i.name)}${i.articleNumber ? `<br><span style="color:#5c626b;font-size:13px">Art.-Nr. ${esc(i.articleNumber)}</span>` : ''}</td><td style="padding:8px 0;border-bottom:1px solid #e3e5e8;text-align:right;white-space:nowrap"><strong>${i.total}</strong> / ${i.minStock}</td></tr>`
+		)
+		.join('');
+	const subject =
+		items.length === 1 ? `Nachbestellen: ${items[0].name}` : `Nachbestellen: ${items.length} Artikel unter Mindestbestand`;
+	return {
+		to,
+		subject,
+		text:
+			`Diese Artikel haben den Mindestbestand erreicht:\n\n` +
+			items.map((i) => `- ${i.name}: ${i.total} (Mindestbestand ${i.minStock})`).join('\n') +
+			`\n\nBestellliste: ${link}`,
+		html: layout(
+			items.length === 1 ? 'Ein Artikel muss nachbestellt werden' : `${items.length} Artikel müssen nachbestellt werden`,
+			`<p>Diese Artikel haben den Mindestbestand erreicht (Bestand / Mindestbestand in Stück):</p><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px">${rows}</table>${button(link, 'Bestellliste öffnen')}`
+		)
+	};
+}
+
+export function testMail(to: string): Mail {
+	return {
+		to,
+		subject: 'Test-Mail – Monsipan Lager',
+		text: 'Der E-Mail-Versand funktioniert.',
+		html: layout('Der E-Mail-Versand funktioniert', '<p>Warnungen und Passwort-Links werden ab jetzt zugestellt.</p>')
+	};
+}

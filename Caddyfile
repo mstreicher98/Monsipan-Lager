@@ -1,0 +1,10 @@
+# Caddy holt und erneuert das HTTPS-Zertifikat (Let's Encrypt) automatisch.
+# Voraussetzung: DNS-Eintrag der Domain zeigt auf diesen Server, Ports 80/443 offen.
+{$DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	reverse_proxy app:3000
+}

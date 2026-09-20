@@ -1,0 +1,22 @@
+{
+	"name": "Monsipan Lager",
+	"short_name": "Lager",
+	"description": "Lagerbestand scannen, buchen und nachbestellen",
+	"lang": "de-AT",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"orientation": "any",
+	"background_color": "#f2f3f4",
+	"theme_color": "#f2f3f4",
+	"icons": [
+		{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+		{ "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+		{ "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+		{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+	],
+	"shortcuts": [
+		{ "name": "Buchen", "url": "/buchen", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+		{ "name": "Bestand", "url": "/bestand", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+	]
+}
