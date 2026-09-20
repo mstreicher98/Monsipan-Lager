@@ -4,11 +4,14 @@
 	import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
+	import Smartphone from '@lucide/svelte/icons/smartphone';
+	import X from '@lucide/svelte/icons/x';
 	import BarChart from '$lib/components/BarChart.svelte';
 	import CountUp from '$lib/components/CountUp.svelte';
 	import MovementList from '$lib/components/MovementList.svelte';
 	import ProductAvatar from '$lib/components/ProductAvatar.svelte';
 	import { monthLong, monthShort } from '$lib/format';
+	import { install } from '$lib/install.svelte';
 	import { can } from '$lib/permissions';
 
 	let { data } = $props();
@@ -31,6 +34,25 @@
 			partial: i === consumption.length - 1
 		}))
 	);
+	// Hinweis auf die App: nur am Handy, nur solange nicht installiert und nicht weggeklickt
+	const HINT_KEY = 'lager-app-hinweis';
+	let hintHidden = $state(false);
+	$effect(() => {
+		try {
+			hintHidden = localStorage.getItem(HINT_KEY) === 'weg';
+		} catch {
+			/* kein Speicherzugriff */
+		}
+	});
+	function hideHint() {
+		hintHidden = true;
+		try {
+			localStorage.setItem(HINT_KEY, 'weg');
+		} catch {
+			/* kein Speicherzugriff */
+		}
+	}
+
 	const thisMonth = $derived(consumption.at(-1)?.qty ?? 0);
 	const lastMonth = $derived(consumption.at(-2)?.qty ?? 0);
 </script>
@@ -50,6 +72,18 @@
 		</div>
 	{/if}
 </div>
+
+{#if install.suggest && !hintHidden}
+	<div class="card mb-4 flex items-center gap-3 p-3">
+		<span class="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-ink"><Smartphone size={20} aria-hidden="true" /></span>
+		<p class="min-w-0 flex-1 text-sm">
+			<span class="font-medium">Lager als App</span>
+			<span class="block text-ink-3">Symbol am Startbildschirm, Vollbild ohne Browserleiste.</span>
+		</p>
+		<a href="/app" class="btn btn-primary btn-sm shrink-0">Einrichten</a>
+		<button class="btn btn-ghost btn-sm btn-icon shrink-0" aria-label="Hinweis ausblenden" onclick={hideHint}><X size={16} /></button>
+	</div>
+{/if}
 
 <!-- Kennzahlen -->
 <section class="grid grid-cols-2 gap-3 lg:gap-4 {data.kpi.today !== null ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}" aria-label="Kennzahlen">

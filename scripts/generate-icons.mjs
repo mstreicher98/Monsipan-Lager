@@ -1,4 +1,5 @@
 // Erzeugt die App-Icons (PNG) ohne Zusatzpakete: node scripts/generate-icons.mjs
+// Schreibt die Icons für die Webseite (PWA) und, falls vorhanden, für die Android-App.
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
@@ -58,16 +59,20 @@ function inRoundRect(px, py, x, y, w, h, r) {
 	return (px - cx) ** 2 + (py - cy) ** 2 <= r * r;
 }
 
-/** Markierungskachel wie favicon.svg; maskable = vollflächig mit Sicherheitsrand */
-function icon(size, maskable) {
+const DASHES = [
+	[6, 14.5, 6, 3],
+	[14, 14.5, 6, 3],
+	[22, 14.5, 4, 3]
+];
+
+/**
+ * Markierungskachel wie favicon.svg.
+ * shape: 'rounded' (Kachel), 'circle' (runder Rand), 'full' (randlos), 'none' (nur Striche)
+ * scale: Größe der Striche im Verhältnis zur Fläche
+ */
+function icon(size, { shape = 'rounded', scale = 1 } = {}) {
 	const SS = 4;
-	const scale = maskable ? 0.72 : 1;
 	const off = (32 - 32 * scale) / 2;
-	const dashes = [
-		[6, 14.5, 6, 3],
-		[14, 14.5, 6, 3],
-		[22, 14.5, 4, 3]
-	];
 	return png(size, (x, y) => {
 		let bg = 0;
 		let fg = 0;
@@ -75,10 +80,12 @@ function icon(size, maskable) {
 			for (let sx = 0; sx < SS; sx++) {
 				const px = ((x + (sx + 0.5) / SS) / size) * 32;
 				const py = ((y + (sy + 0.5) / SS) / size) * 32;
-				if (maskable || inRoundRect(px, py, 0, 0, 32, 32, 9)) bg++;
+				if (shape === 'full') bg++;
+				else if (shape === 'rounded' && inRoundRect(px, py, 0, 0, 32, 32, 9)) bg++;
+				else if (shape === 'circle' && inRoundRect(px, py, 0, 0, 32, 32, 16)) bg++;
 				const qx = (px - off) / scale;
 				const qy = (py - off) / scale;
-				if (dashes.some(([dx, dy, w, h]) => inRoundRect(qx, qy, dx, dy, w, h, 1))) fg++;
+				if (DASHES.some(([dx, dy, w, h]) => inRoundRect(qx, qy, dx, dy, w, h, 1))) fg++;
 			}
 		const n = SS * SS;
 		const t = fg / n;
@@ -87,10 +94,56 @@ function icon(size, maskable) {
 	});
 }
 
-const out = path.resolve('static/icons');
-fs.mkdirSync(out, { recursive: true });
-fs.writeFileSync(path.join(out, 'icon-192.png'), icon(192, false));
-fs.writeFileSync(path.join(out, 'icon-512.png'), icon(512, false));
-fs.writeFileSync(path.join(out, 'icon-maskable-512.png'), icon(512, true));
-fs.writeFileSync(path.join(out, 'apple-touch-icon.png'), icon(180, true));
-console.log('Icons geschrieben nach', out);
+/* ------------------------------------------------------------ Webseite */
+
+const web = path.resolve('static/icons');
+fs.mkdirSync(web, { recursive: true });
+fs.writeFileSync(path.join(web, 'icon-192.png'), icon(192));
+fs.writeFileSync(path.join(web, 'icon-512.png'), icon(512));
+fs.writeFileSync(path.join(web, 'icon-maskable-512.png'), icon(512, { shape: 'full', scale: 0.72 }));
+fs.writeFileSync(path.join(web, 'apple-touch-icon.png'), icon(180, { shape: 'full', scale: 0.72 }));
+console.log('Icons für die Webseite:', web);
+
+/* ------------------------------------------------------- Android-App */
+
+const res = path.resolve('android/app/src/main/res');
+if (!fs.existsSync(res)) process.exit(0);
+
+// Launcher-Icons je Bildschirmdichte; das Vordergrund-Icon sitzt im 108dp-Raster
+const DENSITIES = [
+	['mdpi', 48, 108],
+	['hdpi', 72, 162],
+	['xhdpi', 96, 216],
+	['xxhdpi', 144, 324],
+	['xxxhdpi', 192, 432]
+];
+
+for (const [density, launcher, adaptive] of DENSITIES) {
+	const dir = path.join(res, `mipmap-${density}`);
+	fs.mkdirSync(dir, { recursive: true });
+	fs.writeFileSync(path.join(dir, 'ic_launcher.png'), icon(launcher));
+	fs.writeFileSync(path.join(dir, 'ic_launcher_round.png'), icon(launcher, { shape: 'circle' }));
+	// Nur die Striche, freigestellt: der Hintergrund kommt als Farbe dazu
+	fs.writeFileSync(path.join(dir, 'ic_launcher_foreground.png'), icon(adaptive, { shape: 'none', scale: 0.58 }));
+}
+
+// Der Startbildschirm wird als Zeichnung beschrieben statt als Bild pro Format
+for (const dir of fs.readdirSync(res)) {
+	if (!dir.startsWith('drawable')) continue;
+	const file = path.join(res, dir, 'splash.png');
+	if (fs.existsSync(file)) fs.rmSync(file);
+}
+fs.writeFileSync(
+	path.join(res, 'drawable', 'splash.xml'),
+	`<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/splashBackground" />
+    <item
+        android:drawable="@mipmap/ic_launcher_foreground"
+        android:gravity="center"
+        android:width="192dp"
+        android:height="192dp" />
+</layer-list>
+`
+);
+console.log('Icons für die Android-App:', res);

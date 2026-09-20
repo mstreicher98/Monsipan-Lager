@@ -11,6 +11,7 @@
 	import CameraScanner from '$lib/components/CameraScanner.svelte';
 	import { can } from '$lib/permissions';
 	import { installWedgeListener, onScan, SCAN_PRIORITY } from '$lib/scan/wedge';
+	import { install } from '$lib/install.svelte';
 	import { lookupScan } from '$lib/scan/lookup';
 	import { feedbackError, feedbackSuccess } from '$lib/scan/feedback';
 	import { scanner } from '$lib/scan/scanner.svelte';
@@ -27,6 +28,7 @@
 
 	onMount(() => {
 		const uninstall = installWedgeListener();
+		const stopInstallCheck = install.start();
 
 		// Standard-Empfänger: Scan irgendwo in der App → Artikel anzeigen.
 		// Seiten wie "Buchen" registrieren eigene Empfänger und haben Vorrang.
@@ -58,6 +60,7 @@
 
 		return () => {
 			uninstall();
+			stopInstallCheck();
 			off();
 			es?.close();
 			clearTimeout(timer);

@@ -1,0 +1,97 @@
+name: Android-App (APK)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - 'capacitor/**'
+      - 'capacitor.config.ts'
+      - 'package-lock.json'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Adresse, die die App öffnet'
+        default: 'https://lager.monsipan.at'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    name: APK bauen und veröffentlichen
+    runs-on: ubuntu-latest
+    env:
+      # Secrets lassen sich in Bedingungen nicht direkt abfragen
+      HAT_SCHLUESSEL: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: npm ci
+
+      # Adresse und Web-Teil ins Android-Projekt übernehmen
+      - name: Projekt vorbereiten
+        env:
+          APP_URL: ${{ inputs.url || vars.APP_URL || 'https://lager.monsipan.at' }}
+        run: |
+          npx cap sync android
+          echo "Adresse: $APP_URL"
+          echo "APP_URL=$APP_URL" >> "$GITHUB_ENV"
+
+      # Signaturschlüssel, falls als Secret hinterlegt – sonst wird mit dem
+      # Debug-Schlüssel signiert (installierbar, aber für Updates ungeeignet)
+      - name: Schlüssel bereitstellen
+        if: env.HAT_SCHLUESSEL == 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/lager.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/lager.jks" >> "$GITHUB_ENV"
+
+      - name: APK bauen
+        working-directory: android
+        env:
+          APP_VERSION_CODE: ${{ github.run_number }}
+          APP_VERSION_NAME: 1.0.${{ github.run_number }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: APK benennen
+        run: cp android/app/build/outputs/apk/release/app-release*.apk monsipan-lager.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: monsipan-lager-apk
+          path: monsipan-lager.apk
+
+      # Fester Download-Link für den Knopf in der App:
+      # https://github.com/<repo>/releases/download/app/monsipan-lager.apk
+      - name: Veröffentlichen
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: app
+          name: Monsipan Lager – Android-App
+          make_latest: false
+          body: |
+            Android-App zum Seitenladen (Version 1.0.${{ github.run_number }}).
+
+            Öffnet ${{ env.APP_URL }}. Die Inhalte kommen immer vom Server, eine
+            neue APK-Datei braucht es nur, wenn sich die App-Hülle ändert.
+
+            Installation am Handy: Datei öffnen und die Installation aus dieser
+            Quelle erlauben.
+          files: monsipan-lager.apk

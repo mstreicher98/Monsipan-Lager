@@ -6,10 +6,12 @@
 	import Moon from '@lucide/svelte/icons/moon';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import Smartphone from '@lucide/svelte/icons/smartphone';
 	import Dialog from './Dialog.svelte';
 	import { ADMIN_NAV, bottomRightTab, MAIN_NAV, visible } from '$lib/nav';
 	import { fullName, initials } from '$lib/format';
 	import { ROLE_LABELS, type Role } from '$lib/permissions';
+	import { install } from '$lib/install.svelte';
 	import { setTheme, type Theme } from '$lib/theme';
 
 	interface Props {
@@ -53,6 +55,15 @@
 				</a>
 			</li>
 		{/each}
+		{#if install.suggest}
+			<li>
+				<a href="/app" class="flex h-13 items-center gap-3 rounded-xl px-3 hover:bg-surface-3" onclick={() => (open = false)}>
+					<Smartphone size={20} class="text-ink-2" aria-hidden="true" />
+					<span class="flex-1 font-medium">App installieren</span>
+					<ChevronRight size={18} class="text-ink-3" aria-hidden="true" />
+				</a>
+			</li>
+		{/if}
 	</ul>
 
 	<p class="mt-4 mb-2 text-sm text-ink-3" id="m-theme">Darstellung</p>

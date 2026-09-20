@@ -5,7 +5,7 @@ Umlagern, Rückgaben, Inventur, Bestellliste mit Warn-Mails und Auswertungen.
 
 - **Scannen** mit USB-/Bluetooth-Handscanner am PC oder mit der Handykamera
   (EAN, GTIN-14, Code 128, GS1 und die Kansai-DataMatrix mit `bez:`/`art:`/`inh:` …)
-- **Handy und PC**, als App installierbar (PWA), Hell- und Dunkelmodus
+- **Handy und PC**, als App installierbar: Android-App zum Herunterladen oder als Web-App, Hell- und Dunkelmodus
 - **Live**: Buchungen auf einem Gerät erscheinen sofort auf allen anderen
 - **Drucken**: Bestand und Bewegungen aufs Papier, mit Zählspalte für die Inventur
 - **Ein Container** plus Caddy für HTTPS, Datenbank ist eine einzige SQLite-Datei
@@ -20,8 +20,9 @@ Umlagern, Rückgaben, Inventur, Bestellliste mit Warn-Mails und Auswertungen.
 4. [Datensicherung](#datensicherung)
 5. [Alles zurücksetzen](#alles-zurücksetzen)
 6. [Listen drucken](#listen-drucken)
-7. [Scanner einrichten](#scanner-einrichten)
-8. [Technik und Projektstruktur](#technik-und-projektstruktur)
+7. [App fürs Handy](#app-fürs-handy)
+8. [Scanner einrichten](#scanner-einrichten)
+9. [Technik und Projektstruktur](#technik-und-projektstruktur)
 
 ---
 
@@ -220,6 +221,53 @@ sonst hilft der Knopf auf der Seite.
   Mindestbestand“. Ganz rechts ist eine leere Spalte **gezählt** zum Eintragen bei der Inventur.
 - **Bewegungen:** Zeitpunkt, Art, Artikel, Menge mit Vorzeichen, Von/Nach und wer gebucht
   hat. Stornierte Buchungen sind durchgestrichen. Nur für Rollen, die Bewegungen sehen dürfen.
+
+## App fürs Handy
+
+Im Lager erscheint am Handy unter **Mehr → App installieren** (und als Hinweis auf der
+Übersicht) die Seite [`/app`](src/routes/(app)/app/+page.svelte). Sie zeigt je nach Gerät
+den passenden Weg. Am PC steht dort nur, dass die Seite am Handy zu öffnen ist – der
+Download-Knopf erscheint ausschließlich am Handy und nur angemeldet.
+
+**Android:** echte App (Capacitor), die die laufende Webseite anzeigt. Beim ersten Mal
+fragt Android, ob Apps aus dieser Quelle installiert werden dürfen, weil die Datei nicht
+aus dem Play Store kommt. Fester Download-Link:
+
+```
+https://github.com/mstreicher98/Monsipan-Lager/releases/download/app/monsipan-lager.apk
+```
+
+**iPhone und iPad:** Apple erlaubt kein Installieren per Datei. Safari legt das Lager
+stattdessen über **Teilen → Zum Home-Bildschirm** als App an – mit eigenem Symbol,
+Vollbild und Kamera-Scan. Die Seite zeigt die drei Schritte mit Symbolen.
+
+Die App ist nur eine Hülle: Inhalte, Anmeldung und Updates kommen vom Server. Eine neue
+APK-Datei braucht es nur, wenn sich an der Hülle etwas ändert (Adresse, Symbol, Berechtigungen).
+
+**Bauen:** [`.github/workflows/android.yml`](.github/workflows/android.yml) baut die APK
+bei Änderungen an `android/`, `capacitor/` oder `capacitor.config.ts` und hängt sie an das
+Release mit dem Tag `app`. Über **Actions → Android-App (APK) → Run workflow** lässt sich
+auch eine andere Adresse mitgeben; dauerhaft geht das über die Repository-Variable `APP_URL`.
+Liegt die Datei woanders, zeigt die Umgebungsvariable `APK_URL` im Container auf den
+eigenen Download.
+
+**Signatur:** Ohne hinterlegten Schlüssel wird mit dem Debug-Schlüssel signiert. Die App
+lässt sich damit installieren, aber Updates über eine neue APK scheitern, weil sich die
+Signatur ändert. Für den Dauerbetrieb einmalig einen Schlüssel anlegen:
+
+```bash
+keytool -genkeypair -v -keystore lager.jks -alias lager -keyalg RSA -keysize 2048 -validity 10000
+base64 -w0 lager.jks > lager.jks.base64
+```
+
+Danach unter **Settings → Secrets and variables → Actions** hinterlegen:
+`ANDROID_KEYSTORE_BASE64` (Inhalt der base64-Datei), `ANDROID_KEYSTORE_PASSWORD`,
+`ANDROID_KEY_ALIAS` (`lager`) und `ANDROID_KEY_PASSWORD`. Die Datei `lager.jks` gut
+aufbewahren – ohne sie sind keine Updates mehr möglich.
+
+**Icons:** `npm run app:icons` erzeugt die Symbole für Webseite und Android aus einer
+Zeichenvorschrift, ohne Zusatzpakete. `npm run app:sync` überträgt Adresse und
+Offline-Seite ins Android-Projekt.
 
 ## Scanner einrichten
 
