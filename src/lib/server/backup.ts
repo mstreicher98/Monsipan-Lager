@@ -4,22 +4,49 @@ import { client, DATA_DIR } from './db';
 import { purgeExpired } from './auth';
 
 export const BACKUP_DIR = path.join(DATA_DIR, 'backups');
-/** Wie viele normale Sicherungen bzw. Sicherungen vor einem Zurücksetzen erhalten bleiben */
-const KEEP_REGULAR = 14;
-const KEEP_BEFORE_RESET = 10;
-const RESET_SUFFIX = '-vor-reset';
+
+/** Art der Sicherung – steht im Dateinamen und entscheidet, wie lange sie bleibt */
+export const BACKUP_SUFFIX = {
+	regular: '',
+	'before-reset': '-vor-reset',
+	'before-restore': '-vor-restore'
+} as const;
+export type BackupKind = keyof typeof BACKUP_SUFFIX;
+
+const KEEP: Record<BackupKind, number> = { regular: 14, 'before-reset': 10, 'before-restore': 10 };
+
+export const BACKUP_LABELS: Record<BackupKind, string> = {
+	regular: '',
+	'before-reset': 'vor dem Zurücksetzen',
+	'before-restore': 'vor dem Wiederherstellen'
+};
 
 /** Gültige Dateinamen – auch zum Absichern des Downloads */
-export const BACKUP_FILE_RE = /^lager-[\d-]+(-vor-reset)?\.db$/;
+export const BACKUP_FILE_RE = /^lager-[\d-]+(-vor-reset|-vor-restore)?\.db$/;
 
-export function listBackups() {
+function kindOf(file: string): BackupKind {
+	if (file.includes(BACKUP_SUFFIX['before-reset'])) return 'before-reset';
+	if (file.includes(BACKUP_SUFFIX['before-restore'])) return 'before-restore';
+	return 'regular';
+}
+
+export interface BackupFile {
+	file: string;
+	size: number;
+	createdAt: Date;
+	kind: BackupKind;
+	label: string;
+}
+
+export function listBackups(): BackupFile[] {
 	if (!fs.existsSync(BACKUP_DIR)) return [];
 	return fs
 		.readdirSync(BACKUP_DIR)
 		.filter((f) => BACKUP_FILE_RE.test(f))
 		.map((f) => {
 			const stat = fs.statSync(path.join(BACKUP_DIR, f));
-			return { file: f, size: stat.size, createdAt: stat.mtime, beforeReset: f.includes(RESET_SUFFIX) };
+			const kind = kindOf(f);
+			return { file: f, size: stat.size, createdAt: stat.mtime, kind, label: BACKUP_LABELS[kind] };
 		})
 		.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
@@ -28,23 +55,42 @@ export function listBackups() {
  * Konsistente Kopie der laufenden Datenbank (VACUUM INTO). Vorhandene Sicherungen
  * werden nie überschrieben; alte Stände werden getrennt nach Art aufgeräumt.
  */
-export async function createBackup(kind: 'regular' | 'before-reset' = 'regular'): Promise<string> {
+export async function createBackup(kind: BackupKind = 'regular'): Promise<string> {
 	fs.mkdirSync(BACKUP_DIR, { recursive: true });
 	const d = new Date();
 	const pad = (n: number) => String(n).padStart(2, '0');
 	const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-	const suffix = kind === 'before-reset' ? RESET_SUFFIX : '';
+	const suffix = BACKUP_SUFFIX[kind];
 	let name = `lager-${stamp}${suffix}.db`;
 	for (let i = 2; fs.existsSync(path.join(BACKUP_DIR, name)); i++) name = `lager-${stamp}-${i}${suffix}.db`;
 	await client.execute({ sql: 'VACUUM INTO ?', args: [path.join(BACKUP_DIR, name)] });
 
 	const all = listBackups();
-	const stale = [
-		...all.filter((b) => !b.beforeReset).slice(KEEP_REGULAR),
-		...all.filter((b) => b.beforeReset).slice(KEEP_BEFORE_RESET)
-	];
-	for (const old of stale) fs.rmSync(path.join(BACKUP_DIR, old.file), { force: true });
+	for (const k of Object.keys(KEEP) as BackupKind[]) {
+		for (const old of all.filter((b) => b.kind === k).slice(KEEP[k])) {
+			fs.rmSync(path.join(BACKUP_DIR, old.file), { force: true });
+		}
+	}
 	return name;
+}
+
+/**
+ * Zwischendateien vom Wiederherstellen aufräumen. Unter Windows bleibt eine
+ * gerade benutzte Datenbankdatei gesperrt – dann klappt es beim nächsten Start.
+ */
+export function sweepTempFiles() {
+	try {
+		for (const name of fs.readdirSync(DATA_DIR)) {
+			if (!/^(restore|upload)-[0-9a-z]+-[0-9a-z]+\.db(-wal|-shm)?$/.test(name)) continue;
+			try {
+				fs.rmSync(path.join(DATA_DIR, name), { force: true });
+			} catch {
+				/* noch gesperrt */
+			}
+		}
+	} catch {
+		/* Ordner nicht lesbar */
+	}
 }
 
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -56,12 +102,13 @@ export function scheduleMaintenance() {
 		try {
 			const now = new Date();
 			const today = now.toDateString();
-			const latest = listBackups().find((b) => !b.beforeReset);
+			const latest = listBackups().find((b) => b.kind === 'regular');
 			if (now.getHours() >= 2 && (!latest || latest.createdAt.toDateString() !== today)) {
 				const name = await createBackup();
 				console.info(`[backup] ${name} erstellt`);
 			}
 			await purgeExpired();
+			sweepTempFiles();
 		} catch (err) {
 			console.error('[backup]', err);
 		}

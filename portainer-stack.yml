@@ -20,6 +20,8 @@ services:
       # Echte Besucher-IP hinter dem Tunnel (für die Sperre bei falschen Passwörtern)
       ADDRESS_HEADER: Cf-Connecting-Ip
       TZ: Europe/Vienna
+      # Damit sich Sicherungen über die Oberfläche hochladen lassen
+      BODY_SIZE_LIMIT: 210M
 
       # Erster Admin – wird nur beim allerersten Start angelegt.
       # Ohne Passwort erzeugt die App eines und zeigt es einmalig im Log.

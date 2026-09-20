@@ -7,6 +7,7 @@ Umlagern, Rückgaben, Inventur, Bestellliste mit Warn-Mails und Auswertungen.
   (EAN, GTIN-14, Code 128, GS1 und die Kansai-DataMatrix mit `bez:`/`art:`/`inh:` …)
 - **Handy und PC**, als App installierbar (PWA), Hell- und Dunkelmodus
 - **Live**: Buchungen auf einem Gerät erscheinen sofort auf allen anderen
+- **Drucken**: Bestand und Bewegungen aufs Papier, mit Zählspalte für die Inventur
 - **Ein Container** plus Caddy für HTTPS, Datenbank ist eine einzige SQLite-Datei
 
 ---
@@ -18,8 +19,9 @@ Umlagern, Rückgaben, Inventur, Bestellliste mit Warn-Mails und Auswertungen.
 3. [Betrieb auf dem Server](#betrieb-auf-dem-server)
 4. [Datensicherung](#datensicherung)
 5. [Alles zurücksetzen](#alles-zurücksetzen)
-6. [Scanner einrichten](#scanner-einrichten)
-7. [Technik und Projektstruktur](#technik-und-projektstruktur)
+6. [Listen drucken](#listen-drucken)
+7. [Scanner einrichten](#scanner-einrichten)
+8. [Technik und Projektstruktur](#technik-und-projektstruktur)
 
 ---
 
@@ -41,6 +43,15 @@ in der Bewegungsliste steht dann der eigene Name. Eine Partie lässt sich jederz
 **Benutzer löschen:** Wer nie gebucht hat, wird vollständig entfernt. Wer schon gebucht hat,
 kann sich danach nicht mehr anmelden und verschwindet aus der Liste; der Name bleibt in der
 Historie erhalten, Benutzername und E-Mail werden frei.
+
+**Inhaber:** Genau ein Konto ist Inhaber – zu Beginn der erste Admin. Nur der Inhaber darf
+Admins löschen, deaktivieren oder herabstufen und deren Passwort zurücksetzen; alle übrigen
+Benutzer verwaltet jeder Admin wie bisher. Das Inhaber-Konto selbst kann niemand löschen,
+deaktivieren oder herabstufen, auch der Inhaber nicht. Unter **Benutzer → Inhaber-Konto**
+lässt sich die Inhaberschaft mit Passwortbestätigung an einen anderen aktiven Admin
+übergeben; der bisherige Inhaber bleibt Admin. Beim Zurücksetzen aller Daten bleibt das
+Inhaber-Konto immer erhalten. Die Regeln stehen in
+[`src/lib/user-rules.ts`](src/lib/user-rules.ts).
 
 Die Rechte stehen an einer Stelle: [`src/lib/permissions.ts`](src/lib/permissions.ts).
 
@@ -153,8 +164,20 @@ testet ein Admin unter **Einstellungen → Test senden**.
   (Docker-Volume `lager-data`), die letzten 14 bleiben erhalten. Sicherungen werden nie
   überschrieben; entsteht eine zweite in derselben Sekunde, bekommt sie ein `-2` angehängt.
 - Unter **Einstellungen → Datensicherung** lassen sich Sicherungen sofort erstellen und herunterladen.
-- **Wiederherstellen:** Container stoppen, gewünschte Sicherung als `lager.db` in das
-  Volume kopieren, Container starten.
+
+**Wiederherstellen (in der App, nur Admin):** In der Liste der Sicherungen auf das
+Verlaufs-Symbol klicken oder über **Sicherungsdatei hochladen** eine `.db`-Datei von
+außerhalb einspielen (bis 200 MB, deshalb steht `BODY_SIZE_LIMIT` im Container auf 210M).
+Bestätigt wird mit dem eigenen Passwort. Ablauf: Datei prüfen (SQLite, Schema, Zustand),
+bei Bedarf auf den aktuellen Schemastand migrieren, Sicherung des jetzigen Standes anlegen
+(`-vor-restore` im Namen) und dann den gesamten Inhalt in einer Transaktion ersetzen –
+entweder ganz oder gar nicht. Die Datenbankdatei selbst wird nicht getauscht, damit
+laufende Anfragen nicht ins Leere greifen. Anmeldungen kommen danach aus der Sicherung;
+wer dadurch abgemeldet wird, meldet sich einfach neu an.
+Der Code steht in [`src/lib/server/restore.ts`](src/lib/server/restore.ts).
+
+**Wiederherstellen von Hand** (z. B. wenn die App nicht startet): Container stoppen,
+gewünschte Sicherung als `lager.db` in das Volume kopieren, Container starten.
 
 ```bash
 docker compose stop app
@@ -180,6 +203,22 @@ Artikel und Codes, Bestand, alle Bewegungen, Lagerorte, Partien, Materialarten u
 - **Vorher entsteht automatisch eine Sicherung** mit `-vor-reset` im Namen. Sie ist in der
   Liste gekennzeichnet, wird getrennt aufbewahrt (die letzten 10) und verdrängt keine der
   14 regulären Sicherungen. Wiederherstellen wie oben beschrieben.
+
+## Listen drucken
+
+**Bestand** und **Bewegungen** haben je einen Knopf **Drucken**. Er öffnet eine eigene
+Druckansicht, die den aktuellen Filter übernimmt und alle Treffer enthält – nicht nur die
+angezeigte Seite, sondern bis zu 2000 Zeilen. Das Druckfenster öffnet sich von selbst;
+sonst hilft der Knopf auf der Seite.
+
+- Eingestellt auf A4 mit Kopfzeile: Firma, Titel, Filter und Zeitpunkt des Ausdrucks.
+  Der Tabellenkopf wiederholt sich auf jeder Seite, Zeilen werden nicht umgebrochen.
+  Navigation, Filter und Knöpfe kommen nicht aufs Papier.
+- **Bestandsliste:** je Artikel Nummer, Hersteller und die Mengen der einzelnen Lagerorte.
+  Bestände auf oder unter dem Mindestbestand stehen fett mit dem Hinweis „unter
+  Mindestbestand“. Ganz rechts ist eine leere Spalte **gezählt** zum Eintragen bei der Inventur.
+- **Bewegungen:** Zeitpunkt, Art, Artikel, Menge mit Vorzeichen, Von/Nach und wer gebucht
+  hat. Stornierte Buchungen sind durchgestrichen. Nur für Rollen, die Bewegungen sehen dürfen.
 
 ## Scanner einrichten
 
@@ -231,7 +270,7 @@ Die Artikelsuche findet Artikel auch über die RAL-Nummer.
 src/
   lib/
     scan/          Scan-Parser, Tastaturlayouts, Handscanner- und Kamera-Anbindung
-    server/        Datenbank, Anmeldung, Buchungslogik, Warnungen, Mail, Backups
+    server/        Datenbank, Anmeldung, Buchungslogik, Warnungen, Mail, Sicherungen
     components/    Oberflächen-Bausteine
     permissions.ts Rollen und Rechte
   routes/

@@ -15,7 +15,8 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOST=0.0.0.0 \
     DATA_DIR=/data \
-    TZ=Europe/Vienna
+    TZ=Europe/Vienna \
+    BODY_SIZE_LIMIT=210M
 COPY --from=build --chown=node:node /app/build ./build
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/drizzle ./drizzle

@@ -35,6 +35,8 @@ async function createInitialAdmin() {
 		firstName: 'Admin',
 		lastName: '',
 		role: 'admin',
+		// Der erste Admin ist Inhaber: nur er darf später Admins löschen oder herabstufen
+		owner: true,
 		passwordHash: await hashPassword(password),
 		mustChangePassword: !dev
 	});

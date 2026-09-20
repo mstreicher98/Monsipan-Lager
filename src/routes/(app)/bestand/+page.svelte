@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Download from '@lucide/svelte/icons/download';
+	import Printer from '@lucide/svelte/icons/printer';
 	import Search from '@lucide/svelte/icons/search';
 	import ListFilter from '@lucide/svelte/icons/list-filter';
 	import PackageOpen from '@lucide/svelte/icons/package-open';
@@ -65,6 +66,7 @@
 		<p class="text-ink-2"><span class="num">{data.count}</span> {data.count === 1 ? 'Artikel' : 'Artikel'}</p>
 	</div>
 	<div class="flex gap-2">
+		<a href="/bestand/druck{page.url.search}" class="btn btn-secondary"><Printer size={18} aria-hidden="true" /><span class="hidden sm:inline">Drucken</span></a>
 		<a href={exportHref} class="btn btn-secondary" download><Download size={18} aria-hidden="true" /><span class="hidden sm:inline">Export</span></a>
 		{#if canManage}
 			<a href="/artikel/neu" class="btn btn-primary"><Plus size={18} aria-hidden="true" />Neuer Artikel</a>

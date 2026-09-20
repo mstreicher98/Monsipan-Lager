@@ -7,6 +7,7 @@ import { movements, products, users } from '$lib/server/db/schema';
 import { isRateLimited, registerFailure, verifyPassword } from '$lib/server/auth';
 import { requirePermission, str } from '$lib/server/guard';
 import { dataCounts, isResetPhrase, RESET_PHRASE, resetAllData } from '$lib/server/reset';
+import { backupPath, MAX_UPLOAD_BYTES, restoreFromFile, RestoreError, stageUpload } from '$lib/server/restore';
 import { mailInfo, sendMail, testMail } from '$lib/server/mail';
 import { getSettings, updateSettings } from '$lib/server/settings';
 import { ROLES, type Role } from '$lib/permissions';
@@ -40,6 +41,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		myEmail: me.email,
 		resetCounts: await dataCounts(me.id),
 		resetPhrase: RESET_PHRASE,
+		maxUploadBytes: MAX_UPLOAD_BYTES,
 		recipients: Object.fromEntries(recipients.map((r) => [r.role, Number(r.n)])) as Partial<Record<Role, number>>,
 		backups: listBackups(),
 		stats: {
@@ -73,6 +75,41 @@ export const actions: Actions = {
 		return { backup: name };
 	},
 	/** Alles zurücksetzen – doppelt bestätigt: Bestätigungstext + eigenes Passwort */
+	/** Sicherung einspielen: aus der Liste oder als hochgeladene Datei */
+	restore: async ({ request, locals, getClientAddress }) => {
+		const me = requirePermission(locals, 'settings.manage');
+		const f = await request.formData();
+		const key = `restore:${getClientAddress()}:${me.id}`;
+		if (isRateLimited(key, 5)) return fail(429, { restore: true, message: 'Zu viele Versuche. Bitte in 15 Minuten erneut versuchen.' });
+		const row = await db.select({ hash: users.passwordHash }).from(users).where(eq(users.id, me.id)).get();
+		if (!row || !(await verifyPassword(row.hash, String(f.get('password') ?? '')))) {
+			registerFailure(key);
+			return fail(400, { restore: true, message: 'Das Passwort stimmt nicht.' });
+		}
+
+		const upload = f.get('file');
+		const chosen = str(f.get('backup'), 120);
+		try {
+			let source: string;
+			let label: string;
+			if (upload instanceof File && upload.size > 0) {
+				source = await stageUpload(upload);
+				label = upload.name;
+			} else if (chosen) {
+				source = backupPath(chosen);
+				label = chosen;
+			} else {
+				return fail(400, { restore: true, message: 'Bitte eine Sicherung auswählen oder eine Datei hochladen.' });
+			}
+			const result = await restoreFromFile(source, `${label} (durch ${me.username})`);
+			return { restoreDone: true, backup: result.backup, contents: result.contents, source: label };
+		} catch (err) {
+			if (err instanceof RestoreError) return fail(400, { restore: true, message: err.message });
+			console.error('[restore]', err);
+			return fail(500, { restore: true, message: 'Die Sicherung konnte nicht eingespielt werden. Details stehen im Log.' });
+		}
+	},
+
 	reset: async ({ request, locals, getClientAddress }) => {
 		const me = requirePermission(locals, 'settings.manage');
 		const f = await request.formData();

@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Download from '@lucide/svelte/icons/download';
+	import Printer from '@lucide/svelte/icons/printer';
 	import Search from '@lucide/svelte/icons/search';
 	import ListFilter from '@lucide/svelte/icons/list-filter';
 	import Pencil from '@lucide/svelte/icons/pencil';
@@ -75,7 +76,10 @@
 		<h1 class="text-[2rem] leading-tight">Bewegungen</h1>
 		<p class="text-ink-2"><span class="num">{data.count}</span> Buchungen im gewählten Zeitraum</p>
 	</div>
-	<a href="/export/bewegungen.csv{page.url.search}" class="btn btn-secondary" download><Download size={18} aria-hidden="true" />Export</a>
+	<div class="flex gap-2">
+		<a href="/bewegungen/druck{page.url.search}" class="btn btn-secondary"><Printer size={18} aria-hidden="true" />Drucken</a>
+		<a href="/export/bewegungen.csv{page.url.search}" class="btn btn-secondary" download><Download size={18} aria-hidden="true" />Export</a>
+	</div>
 </div>
 
 <section class="card overflow-visible">

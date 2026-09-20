@@ -11,6 +11,8 @@ services:
       # echte Client-IP hinter Caddy (für die Sperre bei falschen Passwörtern)
       ADDRESS_HEADER: X-Forwarded-For
       XFF_DEPTH: '1'
+      # Damit sich Sicherungen über die Oberfläche hochladen lassen
+      BODY_SIZE_LIMIT: 210M
     volumes:
       - lager-data:/data
     expose:

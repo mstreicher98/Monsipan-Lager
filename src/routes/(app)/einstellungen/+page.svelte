@@ -4,6 +4,8 @@
 	import Bell from '@lucide/svelte/icons/bell';
 	import DatabaseBackup from '@lucide/svelte/icons/database-backup';
 	import Download from '@lucide/svelte/icons/download';
+	import Upload from '@lucide/svelte/icons/upload';
+	import History from '@lucide/svelte/icons/history';
 	import ScanBarcode from '@lucide/svelte/icons/scan-barcode';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
@@ -18,6 +20,34 @@
 
 	let { data } = $props();
 	let busy = $state('');
+
+	// Sicherung wiederherstellen
+	let restoreOpen = $state(false);
+	let restoreSource = $state<{ file: string; label: string; upload: File | null } | null>(null);
+	let restorePassword = $state('');
+	let restoreError = $state('');
+	let restoreResult = $state<{ source: string; backup: string; products: number; movements: number; users: number } | null>(null);
+	let uploadInput = $state<HTMLInputElement | null>(null);
+	let restoreDone = $state(false);
+
+	function askRestore(source: { file: string; label: string; upload: File | null }) {
+		restoreSource = source;
+		restorePassword = '';
+		restoreError = '';
+		restoreOpen = true;
+	}
+
+	function pickUpload(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+		if (file.size > data.maxUploadBytes) {
+			toast.error('Datei zu groß', `Erlaubt sind ${mb(data.maxUploadBytes)}.`);
+			input.value = '';
+			return;
+		}
+		askRestore({ file: '', label: file.name, upload: file });
+	}
 
 	// Alles zurücksetzen
 	let resetOpen = $state(false);
@@ -128,11 +158,19 @@
 				<li class="flex items-center gap-3 px-3 py-2 text-sm">
 					<span class="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
 						{dateTime(b.createdAt)}
-						{#if b.beforeReset}
-							<span class="rounded-full bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger">vor dem Zurücksetzen</span>
+						{#if b.label}
+							<span class="rounded-full bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger">{b.label}</span>
 						{/if}
 					</span>
 					<span class="text-ink-3">{mb(b.size)}</span>
+					<button
+						class="btn btn-ghost btn-sm btn-icon"
+						aria-label="Sicherung vom {dateTime(b.createdAt)} wiederherstellen"
+						title="Wiederherstellen"
+						onclick={() => askRestore({ file: b.file, label: `Sicherung vom ${dateTime(b.createdAt)}`, upload: null })}
+					>
+						<History size={16} />
+					</button>
 					<a href="/export/backup/{b.file}" class="btn btn-ghost btn-sm btn-icon" aria-label="Sicherung vom {dateTime(b.createdAt)} herunterladen" download>
 						<Download size={16} />
 					</a>
@@ -141,6 +179,15 @@
 				<li class="px-3 py-4 text-sm text-ink-3">Noch keine Sicherung vorhanden.</li>
 			{/each}
 		</ul>
+		<div class="mt-4 rounded-xl border border-dashed border-line-strong p-3">
+			<p class="text-sm text-ink-2">
+				Sicherung von außerhalb einspielen, zum Beispiel nach einem Serverumzug. Der jetzige Stand wird vorher automatisch gesichert.
+			</p>
+			<input bind:this={uploadInput} type="file" accept=".db,application/vnd.sqlite3,application/octet-stream" class="sr-only" onchange={pickUpload} />
+			<button class="btn btn-secondary btn-sm mt-3" onclick={() => uploadInput?.click()}>
+				<Upload size={16} aria-hidden="true" />Sicherungsdatei hochladen
+			</button>
+		</div>
 	</section>
 
 	<section class="card p-4 lg:p-6" aria-labelledby="h-system">
@@ -253,3 +300,78 @@
 		</button>
 	{/snippet}
 </Dialog>
+
+<Dialog bind:open={restoreOpen} title="Sicherung einspielen?">
+	<form
+		id="restore-form"
+		method="POST"
+		action="?/restore"
+		enctype="multipart/form-data"
+		use:enhance={({ formData }) => {
+			busy = 'restore';
+			restoreError = '';
+			if (restoreSource?.upload) formData.set('file', restoreSource.upload);
+			else formData.set('backup', restoreSource?.file ?? '');
+			return async ({ result }) => {
+				busy = '';
+				if (result.type === 'failure') {
+					restoreError = String(result.data?.message ?? 'Einspielen fehlgeschlagen');
+					return;
+				}
+				if (result.type === 'success') {
+					const d = (result.data ?? {}) as { source?: string; backup?: string; contents?: { products: number; movements: number; users: number } };
+					restoreOpen = false;
+					clearDrafts();
+					restoreDone = true;
+					restoreResult = {
+						source: d.source ?? '',
+						backup: d.backup ?? '',
+						products: d.contents?.products ?? 0,
+						movements: d.contents?.movements ?? 0,
+						users: d.contents?.users ?? 0
+					};
+				}
+			};
+		}}
+	>
+		<p class="text-ink-2">
+			Der gesamte jetzige Stand wird durch
+			<span class="font-medium text-ink">{restoreSource?.label ?? ''}</span>
+			ersetzt: Artikel, Bestand, Bewegungen, Stammdaten und Benutzer.
+		</p>
+		<ul class="mt-3 list-disc space-y-1 pl-5 text-sm text-ink-2">
+			<li>Vorher entsteht automatisch eine Sicherung des jetzigen Standes.</li>
+			<li>Auch die Anmeldungen kommen aus der Sicherung. Wer dadurch abgemeldet wird, meldet sich einfach neu an.</li>
+			<li>Ältere Sicherungen werden beim Einspielen automatisch auf den aktuellen Stand gebracht.</li>
+		</ul>
+		<div class="mt-4">
+			<label for="restore-password" class="field-label">Zur Bestätigung dein Passwort</label>
+			<!-- svelte-ignore a11y_autofocus -->
+			<PasswordInput id="restore-password" name="password" autofocus autocomplete="current-password" bind:value={restorePassword} />
+		</div>
+		{#if restoreError}<p class="field-error mt-3" role="alert">{restoreError}</p>{/if}
+	</form>
+	{#snippet footer()}
+		<button class="btn btn-secondary" onclick={() => (restoreOpen = false)}>Abbrechen</button>
+		<button class="btn btn-danger" form="restore-form" disabled={!restorePassword || busy === 'restore'}>
+			{busy === 'restore' ? 'Wird eingespielt …' : 'Sicherung einspielen'}
+		</button>
+	{/snippet}
+</Dialog>
+
+<Dialog bind:open={restoreDone} title="Sicherung eingespielt">
+	{#if restoreResult}
+		<p class="text-ink-2">
+			<span class="font-medium text-ink">{restoreResult.source}</span> ist jetzt der aktuelle Stand:
+			{int(restoreResult.products)} Artikel, {int(restoreResult.movements)} Bewegungen, {int(restoreResult.users)} Benutzer.
+		</p>
+		<p class="mt-2 text-sm text-ink-3">
+			Der Stand von vorher liegt als <span class="num">{restoreResult.backup}</span> in der Liste der Sicherungen. Falls du dabei abgemeldet
+			wurdest, einfach neu anmelden.
+		</p>
+	{/if}
+	{#snippet footer()}
+		<button class="btn btn-primary" onclick={() => ((restoreDone = false), goto('/', { invalidateAll: true }))}>Weiter</button>
+	{/snippet}
+</Dialog>
+

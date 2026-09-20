@@ -6,9 +6,12 @@
 	import Copy from '@lucide/svelte/icons/copy';
 	import MailCheck from '@lucide/svelte/icons/mail-check';
 	import Trash from '@lucide/svelte/icons/trash';
+	import Crown from '@lucide/svelte/icons/crown';
 	import Dialog from '$lib/components/Dialog.svelte';
+	import PasswordInput from '$lib/components/PasswordInput.svelte';
 	import { fullName, initials, relativeDateTime } from '$lib/format';
 	import { needsParty, ROLE_DESCRIPTIONS, ROLE_LABELS, ROLES, type Role } from '$lib/permissions';
+	import { canBecomeOwner, denyReason, OWNER_HINT, OWNER_LABEL, type UserAction } from '$lib/user-rules';
 	import { toast } from '$lib/stores/toast.svelte';
 
 	let { data } = $props();
@@ -22,6 +25,20 @@
 	let email = $state('');
 	let formError = $state('');
 	let busy = $state(false);
+
+	const me = $derived({ id: data.user.id, role: data.user.role, owner: data.user.owner });
+	/** Warum eine Aktion für dieses Konto gesperrt ist – leer heißt erlaubt */
+	const why = $derived((u: U, action: UserAction) => denyReason(me, u, action) ?? '');
+	const ownerUser = $derived(data.users.find((u) => u.owner));
+	const transferable = $derived(data.users.filter((u) => canBecomeOwner(u)));
+
+	/** Rolle gesperrt (z. B. Admin ohne Inhaber-Recht) */
+	const roleLocked = $derived(editing ? why(editing, 'role') : '');
+
+	let transferOpen = $state(false);
+	let transferTo = $state<number | null>(null);
+	let transferPassword = $state('');
+	let transferError = $state('');
 
 	let resetUser = $state<U | null>(null);
 	let resetOpen = $state(false);
@@ -99,18 +116,32 @@
 					{#if !u.active}<span class="badge">Deaktiviert</span>{/if}
 					{#if u.active && needsParty(u.role) && !u.partyId}<span class="badge badge-danger">Partie fehlt</span>{/if}
 					{#if u.mustChangePassword && u.active}<span class="badge badge-warn">Passwort offen</span>{/if}
+					{#if u.owner}<span class="badge badge-brand"><Crown size={13} aria-hidden="true" />{OWNER_LABEL}</span>{/if}
 					<span class="badge {roleTone[u.role]}">{ROLE_LABELS[u.role]}</span>
-					<button class="btn btn-ghost btn-sm btn-icon" aria-label="Passwort von {fullName(u)} zurücksetzen" title="Passwort zurücksetzen" onclick={() => ((resetUser = u), (resetOpen = true))}>
+					<button
+						class="btn btn-ghost btn-sm btn-icon"
+						aria-label="Passwort von {fullName(u)} zurücksetzen"
+						title={why(u, 'password') || 'Passwort zurücksetzen'}
+						disabled={Boolean(why(u, 'password'))}
+						onclick={() => ((resetUser = u), (resetOpen = true))}
+					>
 						<KeyRound size={16} />
 					</button>
-					<button class="btn btn-ghost btn-sm btn-icon" aria-label="{fullName(u)} bearbeiten" title="Bearbeiten" onclick={() => openEdit(u)}>
+					<button
+						class="btn btn-ghost btn-sm btn-icon"
+						aria-label="{fullName(u)} bearbeiten"
+						title={why(u, 'edit') || 'Bearbeiten'}
+						disabled={Boolean(why(u, 'edit'))}
+						onclick={() => openEdit(u)}
+					>
 						<Pencil size={16} />
 					</button>
 					{#if u.id !== data.user.id}
 						<button
 							class="btn btn-ghost btn-sm btn-icon hover:text-danger"
 							aria-label="{fullName(u)} löschen"
-							title="Löschen"
+							title={why(u, 'delete') || 'Löschen'}
+							disabled={Boolean(why(u, 'delete'))}
 							onclick={() => ((deleteUser = u), (deleteOpen = true))}
 						>
 							<Trash size={16} />
@@ -122,6 +153,26 @@
 			</li>
 		{/each}
 	</ul>
+</section>
+
+<section class="card mt-4 p-4 lg:p-6" aria-labelledby="h-owner">
+	<h2 id="h-owner" class="flex items-center gap-2 text-xl"><Crown size={20} aria-hidden="true" />{OWNER_LABEL}-Konto</h2>
+	<p class="mt-1 max-w-3xl text-ink-2">
+		{#if ownerUser}
+			<span class="font-medium text-ink">{fullName(ownerUser)}</span> (@{ownerUser.username}) ist {OWNER_LABEL}. {OWNER_HINT}
+			Das {OWNER_LABEL}-Konto selbst lässt sich nicht löschen, deaktivieren oder herabstufen.
+		{:else}
+			Kein Konto ist als {OWNER_LABEL} gekennzeichnet. {OWNER_HINT}
+		{/if}
+	</p>
+	{#if data.user.owner}
+		<button class="btn btn-secondary mt-3" disabled={transferable.length === 0} onclick={() => ((transferTo = transferable[0]?.id ?? null), (transferPassword = ''), (transferError = ''), (transferOpen = true))}>
+			<Crown size={18} aria-hidden="true" />Inhaberschaft übergeben
+		</button>
+		{#if transferable.length === 0}
+			<p class="mt-2 text-sm text-ink-3">Dafür braucht es einen zweiten aktiven Admin.</p>
+		{/if}
+	{/if}
 </section>
 
 <Dialog bind:open={formOpen} title={editing ? 'Benutzer bearbeiten' : 'Benutzer anlegen'} wide>
@@ -170,9 +221,10 @@
 			<p class="field-hint">Für „Passwort vergessen“ und Warn-Mails.</p>
 		</div>
 
-		<fieldset class="sm:col-span-2">
+		<fieldset class="sm:col-span-2" disabled={Boolean(roleLocked)}>
 			<legend class="field-label">Rolle</legend>
-			<div class="grid gap-2 sm:grid-cols-2">
+			{#if roleLocked}<p class="field-hint mb-2">{roleLocked}</p>{/if}
+			<div class="grid gap-2 sm:grid-cols-2 {roleLocked ? 'opacity-60' : ''}">
 				{#each ROLES as r (r)}
 					<label class="flex cursor-pointer items-start gap-3 rounded-xl border border-line-strong p-3 transition-colors has-[:checked]:border-ink has-[:checked]:bg-surface-3">
 						<input type="radio" name="role" value={r} bind:group={role} class="mt-1 accent-[var(--c-ink)]" />
@@ -199,9 +251,13 @@
 		{/if}
 
 		{#if editing}
-			<label class="flex items-center gap-3 rounded-xl bg-surface-2 p-3 sm:col-span-2">
-				<input type="checkbox" name="active" class="size-5 accent-[var(--c-ink)]" checked={editing.active} />
-				<span><span class="font-medium">Zugang aktiv</span><span class="block text-sm text-ink-3">Deaktivierte Benutzer werden sofort abgemeldet.</span></span>
+			{@const activeLocked = why(editing, 'deactivate')}
+			<label class="flex items-center gap-3 rounded-xl bg-surface-2 p-3 sm:col-span-2 {activeLocked ? 'opacity-60' : ''}">
+				<input type="checkbox" name="active" class="size-5 accent-[var(--c-ink)]" checked={editing.active} disabled={Boolean(activeLocked)} />
+				<span>
+					<span class="font-medium">Zugang aktiv</span>
+					<span class="block text-sm text-ink-3">{activeLocked || 'Deaktivierte Benutzer werden sofort abgemeldet.'}</span>
+				</span>
 			</label>
 		{:else}
 			<fieldset class="sm:col-span-2">
@@ -308,5 +364,49 @@
 	{/if}
 	{#snippet footer()}
 		<button class="btn btn-primary" onclick={() => (secretOpen = false)}>Fertig</button>
+	{/snippet}
+</Dialog>
+
+<Dialog bind:open={transferOpen} title="Inhaberschaft übergeben">
+	<form
+		id="owner-form"
+		method="POST"
+		action="?/transferOwner"
+		use:enhance={() => {
+			busy = true;
+			transferError = '';
+			return async ({ result, update }) => {
+				busy = false;
+				if (result.type === 'failure') {
+					transferError = String(result.data?.message ?? 'Übergabe fehlgeschlagen');
+					return;
+				}
+				if (result.type === 'success') {
+					transferOpen = false;
+					toast.success('Inhaberschaft übergeben', String(result.data?.ownerTransferred ?? ''));
+				}
+				await update({ reset: false });
+			};
+		}}
+	>
+		<p class="text-ink-2">
+			Der neue {OWNER_LABEL} darf danach als Einziger Admins löschen, deaktivieren und herabstufen. Dein Konto bleibt Admin, verliert aber
+			diese Rechte.
+		</p>
+		<div class="mt-4">
+			<label for="owner-to" class="field-label">Neuer {OWNER_LABEL}</label>
+			<select id="owner-to" name="id" class="select" required bind:value={transferTo}>
+				{#each transferable as u (u.id)}<option value={u.id}>{fullName(u)} (@{u.username})</option>{/each}
+			</select>
+		</div>
+		<div class="mt-4">
+			<label for="owner-pw" class="field-label">Dein Passwort zur Bestätigung</label>
+			<PasswordInput id="owner-pw" name="password" autocomplete="current-password" bind:value={transferPassword} />
+		</div>
+		{#if transferError}<p class="field-error mt-3" role="alert">{transferError}</p>{/if}
+	</form>
+	{#snippet footer()}
+		<button class="btn btn-secondary" onclick={() => (transferOpen = false)}>Abbrechen</button>
+		<button class="btn btn-primary" form="owner-form" disabled={!transferTo || !transferPassword || busy}>Übergeben</button>
 	{/snippet}
 </Dialog>

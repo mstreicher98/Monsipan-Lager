@@ -51,7 +51,7 @@ const SHORT_TTL = 12 * 60 * 60 * 1000;
 
 export type SessionUser = Pick<
 	User,
-	'id' | 'username' | 'email' | 'firstName' | 'lastName' | 'role' | 'partyId' | 'mustChangePassword'
+	'id' | 'username' | 'email' | 'firstName' | 'lastName' | 'role' | 'partyId' | 'owner' | 'mustChangePassword'
 >;
 
 export async function createSession(userId: number, persistent: boolean, userAgent: string | null) {
@@ -96,6 +96,7 @@ export async function validateSession(token: string): Promise<{ user: SessionUse
 			lastName: users.lastName,
 			role: users.role,
 			partyId: users.partyId,
+			owner: users.owner,
 			active: users.active,
 			mustChangePassword: users.mustChangePassword
 		})

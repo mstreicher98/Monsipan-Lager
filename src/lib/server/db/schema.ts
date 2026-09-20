@@ -17,6 +17,8 @@ export const users = sqliteTable('users', {
 	/** Partie des Benutzers (Pflicht für Partieführer und Arbeiter) – beim Buchen vorausgewählt */
 	partyId: integer('party_id').references((): AnySQLiteColumn => parties.id, { onDelete: 'set null' }),
 	active: integer('active', { mode: 'boolean' }).notNull().default(true),
+	/** Inhaber: darf als Einziger Admins löschen, herabstufen oder deaktivieren – genau ein Konto */
+	owner: integer('owner', { mode: 'boolean' }).notNull().default(false),
 	mustChangePassword: integer('must_change_password', { mode: 'boolean' }).notNull().default(false),
 	lastLoginAt: integer('last_login_at', { mode: 'timestamp_ms' }),
 	/** Gelöscht, aber wegen vorhandener Buchungen als Name in der Historie behalten */

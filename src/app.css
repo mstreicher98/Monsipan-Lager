@@ -233,6 +233,42 @@
 
 /* ------------------------------------------------------------ Bausteine */
 @layer components {
+	.print-table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.9375rem;
+	}
+	.print-table th,
+	.print-table td {
+		border-bottom: 1px solid var(--c-line);
+		padding: 0.35rem 0.5rem;
+		text-align: left;
+		vertical-align: top;
+	}
+	.print-table thead th {
+		border-bottom: 2px solid var(--c-line-strong);
+		font-weight: 600;
+		white-space: nowrap;
+	}
+	.print-table .right {
+		text-align: right;
+	}
+	.print-table .name {
+		font-weight: 600;
+	}
+	.print-table .sub {
+		display: block;
+		font-size: 0.8125rem;
+		color: var(--c-ink-3);
+	}
+	.print-table .low .total {
+		font-weight: 700;
+	}
+	.print-table .cancelled td {
+		text-decoration: line-through;
+		color: var(--c-ink-3);
+	}
+
 	.num {
 		font-variant-numeric: tabular-nums;
 		font-feature-settings: 'tnum' 1;
@@ -603,14 +639,63 @@ dialog.sheet[open]::backdrop {
 }
 
 @media print {
+	@page {
+		size: A4;
+		margin: 14mm 11mm;
+	}
 	.no-print {
 		display: none !important;
 	}
+	html,
 	body {
 		background: #fff;
+		color: #000;
 	}
 	.card {
 		box-shadow: none;
-		border-color: #ccc;
+		border: 0;
+		background: #fff;
+		padding: 0;
+	}
+	.print-sheet,
+	.print-sheet .text-ink-2,
+	.print-sheet .text-ink-3 {
+		color: #000;
+	}
+	.print-head {
+		border-color: #000;
+	}
+	.print-table {
+		font-size: 9.5pt;
+	}
+	.print-table th,
+	.print-table td {
+		border-bottom: 0.5pt solid #999;
+		padding: 2.5pt 3pt;
+	}
+	.print-table thead th {
+		border-bottom: 1pt solid #000;
+	}
+	/* Kopfzeile auf jeder Seite wiederholen */
+	.print-table thead {
+		display: table-header-group;
+	}
+	.print-table tr {
+		break-inside: avoid;
+	}
+	.print-table .sub {
+		font-size: 8pt;
+		color: #444;
+	}
+	.print-table .cancelled td {
+		color: #555;
+	}
+	/* Leere Spalte zum Eintragen */
+	.print-table .write {
+		border-bottom: 0.5pt solid #999;
+	}
+	a[href] {
+		text-decoration: none;
+		color: inherit;
 	}
 }

@@ -20,7 +20,8 @@ export type Tx = Parameters<Parameters<DB['transaction']>[0]>[0];
 
 let ready: Promise<void> | null = null;
 
-function migrationsFolder(): string {
+/** Ordner mit den Migrationen – wird auch beim Wiederherstellen einer Sicherung gebraucht */
+export function migrationsPath(): string {
 	const candidates = [path.resolve('drizzle'), path.resolve(process.cwd(), 'drizzle')];
 	for (const c of candidates) if (fs.existsSync(path.join(c, 'meta', '_journal.json'))) return c;
 	throw new Error('Migrationsordner "drizzle" nicht gefunden');
@@ -31,7 +32,7 @@ export function ensureDatabase(): Promise<void> {
 	ready ??= (async () => {
 		await client.execute('PRAGMA journal_mode = WAL');
 		await client.execute('PRAGMA synchronous = NORMAL');
-		await migrate(db, { migrationsFolder: migrationsFolder() });
+		await migrate(db, { migrationsFolder: migrationsPath() });
 		const { bootstrap } = await import('./seed');
 		await bootstrap();
 	})();

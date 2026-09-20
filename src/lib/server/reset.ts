@@ -1,4 +1,4 @@
-import { and, isNotNull, ne, sql } from 'drizzle-orm';
+import { and, eq, isNotNull, ne, sql } from 'drizzle-orm';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { createBackup } from './backup';
 import { client, db } from './db';
@@ -20,7 +20,7 @@ export async function dataCounts(keepUserId: number) {
 		db
 			.select({ n: sql<number>`count(*)` })
 			.from(users)
-			.where(and(ne(users.id, keepUserId), sql`${users.deletedAt} is null`))
+			.where(and(ne(users.id, keepUserId), eq(users.owner, false), sql`${users.deletedAt} is null`))
 			.get()
 	]);
 	return {
@@ -60,7 +60,8 @@ export async function resetAllData(opts: ResetOptions): Promise<{ backup: string
 		await tx.update(users).set({ partyId: null });
 		// Gelöschte Benutzer existierten nur noch für die Historie – die ist jetzt weg
 		await tx.delete(users).where(isNotNull(users.deletedAt));
-		if (opts.deleteOtherUsers) await tx.delete(users).where(ne(users.id, opts.keepUserId));
+		// Das Inhaber-Konto bleibt immer erhalten, auch wenn jemand anderes zurücksetzt
+		if (opts.deleteOtherUsers) await tx.delete(users).where(and(ne(users.id, opts.keepUserId), eq(users.owner, false)));
 		await tx.delete(parties);
 		await tx.delete(locations);
 		await tx.delete(categories);

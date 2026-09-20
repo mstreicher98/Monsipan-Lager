@@ -69,16 +69,23 @@
 
 <NavProgress />
 
-<Sidebar user={data.user} lowStockCount={data.lowStockCount} theme={data.theme} />
+<div class="print:hidden"><Sidebar user={data.user} lowStockCount={data.lowStockCount} theme={data.theme} /></div>
 
 <div class="min-h-dvh lg:pl-64 print:pl-0">
-	<TopBar {showAlerts} lowStockCount={data.lowStockCount} onscan={() => scanner.openCamera()} />
-	<main id="main" tabindex="-1" class="mx-auto w-full max-w-[1440px] px-4 pt-4 pb-28 outline-none sm:px-6 lg:px-8 lg:pt-2 lg:pb-12" style="view-transition-name: main">
+	<div class="print:hidden"><TopBar {showAlerts} lowStockCount={data.lowStockCount} onscan={() => scanner.openCamera()} /></div>
+	<main
+		id="main"
+		tabindex="-1"
+		class="mx-auto w-full max-w-[1440px] px-4 pt-4 pb-28 outline-none sm:px-6 lg:px-8 lg:pt-2 lg:pb-12 print:max-w-none print:px-0 print:pt-0 print:pb-0"
+		style="view-transition-name: main"
+	>
 		{@render children()}
 	</main>
 </div>
 
-<BottomNav role={data.user.role} onscan={() => scanner.openCamera()} onmore={() => (moreOpen = true)} moreBadge={showAlerts ? data.lowStockCount : 0} />
+<div class="print:hidden">
+	<BottomNav role={data.user.role} onscan={() => scanner.openCamera()} onmore={() => (moreOpen = true)} moreBadge={showAlerts ? data.lowStockCount : 0} />
+</div>
 <MoreSheet bind:open={moreOpen} user={data.user} lowStockCount={data.lowStockCount} theme={data.theme} />
 
 <ScanResultDialog

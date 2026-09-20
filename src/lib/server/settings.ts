@@ -31,6 +31,11 @@ export async function getSettings(): Promise<AppSettings> {
 	return out;
 }
 
+/** Nach dem Einspielen einer Sicherung: gemerkte Einstellungen verwerfen */
+export function clearSettingsCache() {
+	cache = null;
+}
+
 export async function updateSettings(patch: Partial<AppSettings>) {
 	for (const [key, value] of Object.entries(patch)) {
 		const json = JSON.stringify(value);
