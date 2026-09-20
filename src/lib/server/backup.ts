@@ -74,14 +74,33 @@ export async function createBackup(kind: BackupKind = 'regular'): Promise<string
 	return name;
 }
 
+const TEMP_FILE_RE = /^(restore|upload)-[0-9a-z]+-[0-9a-z]+\.db(-wal|-shm)?$/;
+
+let sweepPaused = 0;
+
+/** Während einer Wiederherstellung nichts aufräumen – die Zwischendateien sind in Benutzung */
+export function pauseSweep(): () => void {
+	sweepPaused++;
+	let done = false;
+	return () => {
+		if (done) return;
+		done = true;
+		sweepPaused--;
+	};
+}
+
 /**
  * Zwischendateien vom Wiederherstellen aufräumen. Unter Windows bleibt eine
  * gerade benutzte Datenbankdatei gesperrt – dann klappt es beim nächsten Start.
+ * `keep` schützt die Datei, die gerade eingespielt wird (samt -wal und -shm).
  */
-export function sweepTempFiles() {
+export function sweepTempFiles(keep?: string) {
+	if (sweepPaused > 0 && !keep) return;
+	const keepName = keep ? path.basename(keep) : null;
 	try {
 		for (const name of fs.readdirSync(DATA_DIR)) {
-			if (!/^(restore|upload)-[0-9a-z]+-[0-9a-z]+\.db(-wal|-shm)?$/.test(name)) continue;
+			if (!TEMP_FILE_RE.test(name)) continue;
+			if (keepName && (name === keepName || name.startsWith(`${keepName}-`))) continue;
 			try {
 				fs.rmSync(path.join(DATA_DIR, name), { force: true });
 			} catch {

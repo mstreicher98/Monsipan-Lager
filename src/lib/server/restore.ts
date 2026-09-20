@@ -14,7 +14,7 @@ import { pipeline } from 'node:stream/promises';
 import { createClient, type Client } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql';
 import { migrate } from 'drizzle-orm/libsql/migrator';
-import { BACKUP_DIR, BACKUP_FILE_RE, createBackup, sweepTempFiles } from './backup';
+import { BACKUP_DIR, BACKUP_FILE_RE, createBackup, pauseSweep, sweepTempFiles } from './backup';
 import { client, DATA_DIR, migrationsPath } from './db';
 import { broadcast } from './events';
 import { clearSettingsCache } from './settings';
@@ -35,6 +35,9 @@ export class RestoreError extends Error {}
  * geschlossene Datenbankdatei erst später frei, Löschen darf also scheitern.
  */
 const tempFile = (prefix: string) => path.join(DATA_DIR, `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.db`);
+
+/** Stammt die Datei aus einem Upload? Die darf nach dem Einspielen weg. */
+const isUpload = (file: string) => path.basename(file).startsWith('upload-');
 
 function removeQuietly(file: string) {
 	for (const suffix of ['', '-wal', '-shm']) {
@@ -203,24 +206,29 @@ export interface RestoreResult {
  * wer gerade angemeldet ist, muss sich neu anmelden.
  */
 export async function restoreFromFile(source: string, label: string): Promise<RestoreResult> {
-	const contents = await inspectBackup(source);
-
-	// Auf einer Kopie arbeiten: die Sicherung selbst bleibt, wie sie ist
-	sweepTempFiles();
-	const staged = tempFile('restore');
-	fs.copyFileSync(source, staged);
-
-	const backup = await createBackup('before-restore');
+	// Während des Einspielens räumt die Wartung nicht dazwischen
+	const resume = pauseSweep();
+	let staged: string | null = null;
 	try {
+		const contents = await inspectBackup(source);
+
+		// Altlasten weg – aber niemals die Datei, die gerade eingespielt wird
+		sweepTempFiles(source);
+		// Auf einer Kopie arbeiten: die Sicherung selbst bleibt, wie sie ist
+		staged = tempFile('restore');
+		fs.copyFileSync(source, staged);
+
+		const backup = await createBackup('before-restore');
 		await migrateFile(staged);
 		await replaceContents(staged);
-	} finally {
-		removeQuietly(staged);
-		if (source.includes(path.sep + 'upload-')) removeQuietly(source);
-	}
 
-	clearSettingsCache();
-	broadcast('stock', { productIds: [] });
-	console.warn(`[restore] ${label} eingespielt (${contents.products} Artikel, ${contents.movements} Bewegungen); vorher gesichert als ${backup}`);
-	return { backup, contents };
+		clearSettingsCache();
+		broadcast('stock', { productIds: [] });
+		console.warn(`[restore] ${label} eingespielt (${contents.products} Artikel, ${contents.movements} Bewegungen); vorher gesichert als ${backup}`);
+		return { backup, contents };
+	} finally {
+		if (staged) removeQuietly(staged);
+		if (isUpload(source)) removeQuietly(source);
+		resume();
+	}
 }

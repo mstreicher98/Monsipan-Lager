@@ -10,7 +10,7 @@ vi.mock('$app/environment', () => ({ dev: true, browser: false, building: false,
 
 const { db, ensureDatabase } = await import('./db');
 const { categories, products } = await import('./db/schema');
-const { createBackup, BACKUP_DIR, listBackups } = await import('./backup');
+const { createBackup, BACKUP_DIR, listBackups, pauseSweep, sweepTempFiles } = await import('./backup');
 const { inspectBackup, restoreFromFile, RestoreError } = await import('./restore');
 
 async function addProduct(name: string) {
@@ -86,5 +86,52 @@ describe('Sicherung einspielen', () => {
 	it('lässt sich danach normal weiter benutzen', async () => {
 		await addProduct('Nach dem Einspielen');
 		expect(await productNames()).toEqual(['Nach dem Einspielen', 'Prüfartikel']);
+	});
+});
+
+describe('Zwischendateien aufräumen', () => {
+	const temp = (name: string) => {
+		const file = path.join(TMP, name);
+		fs.writeFileSync(file, 'x');
+		return file;
+	};
+
+	it('verschont die Datei, die gerade eingespielt wird', () => {
+		const keep = temp('upload-abc123-def456.db');
+		fs.writeFileSync(keep + '-wal', 'x');
+		const alt = temp('restore-000000-000000.db');
+		sweepTempFiles(keep);
+		expect(fs.existsSync(keep)).toBe(true);
+		expect(fs.existsSync(keep + '-wal')).toBe(true);
+		expect(fs.existsSync(alt)).toBe(false);
+		fs.rmSync(keep, { force: true });
+		fs.rmSync(keep + '-wal', { force: true });
+	});
+
+	it('räumt während einer Wiederherstellung nicht dazwischen', () => {
+		const laufend = temp('upload-111111-222222.db');
+		const resume = pauseSweep();
+		sweepTempFiles();
+		expect(fs.existsSync(laufend)).toBe(true);
+		resume();
+		sweepTempFiles();
+		expect(fs.existsSync(laufend)).toBe(false);
+	});
+
+	it('spielt eine hochgeladene Datei ein, ohne sie vorher zu löschen', async () => {
+		const stand = await productNames();
+		const backup = await createBackup();
+		await addProduct('Nur kurz da');
+
+		// wie nach dem Hochladen: Kopie im Datenordner, dazu eine Altlast
+		const upload = path.join(TMP, 'upload-zzz999-aaa111.db');
+		fs.copyFileSync(path.join(BACKUP_DIR, backup), upload);
+		const altlast = temp('restore-999999-999999.db');
+
+		await restoreFromFile(upload, 'Hochgeladene Datei');
+		expect(await productNames()).toEqual(stand);
+		// Die Altlast ist weg; die hochgeladene Datei wird zum Schluss gelöscht,
+		// unter Windows erst beim nächsten Aufräumen (die Datei ist noch gesperrt).
+		expect(fs.existsSync(altlast)).toBe(false);
 	});
 });
