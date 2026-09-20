@@ -108,9 +108,10 @@ einem eigenen Docker-Netz, stattdessen in `portainer-stack.yml` Variante B aktiv
 und im Tunnel `http://app:3000` eintragen. TLS macht Cloudflare, Caddy wird dann nicht
 gebraucht.
 
-Ist das Paket in GitHub privat (Standard), in Portainer unter **Registries** eine
-GHCR-Registry mit GitHub-Benutzer und einem Token mit `read:packages` hinterlegen –
-oder das Paket auf GitHub unter **Packages → Package settings** öffentlich schalten.
+Das Paket ist derzeit öffentlich, Portainer braucht also keine Zugangsdaten. Wird es auf
+GitHub unter **Packages → Package settings** auf privat gestellt, in Portainer unter
+**Registries** eine GHCR-Registry mit GitHub-Benutzer und einem Token mit
+`read:packages` hinterlegen.
 
 **Update:** Änderungen pushen, Actions abwarten, in Portainer **Pull and redeploy**.
 Die Datenbank liegt im Volume `lager-data` und bleibt dabei erhalten; Migrationen laufen

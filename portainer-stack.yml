@@ -5,9 +5,9 @@
 #   Compose path:        portainer-stack.yml
 #   Environment variables: siehe unten (mindestens ORIGIN setzen)
 #
-# Ist das Paket in GitHub auf privat gestellt, vorher in Portainer unter
-# Registries eine GHCR-Registry mit GitHub-Benutzer und einem Token
-# (Scope read:packages) anlegen – sonst kann Portainer das Image nicht ziehen.
+# Das Paket ist öffentlich, Portainer braucht also keine Zugangsdaten. Erst wenn es
+# auf privat gestellt wird, in Portainer unter Registries eine GHCR-Registry mit
+# GitHub-Benutzer und einem Token (Scope read:packages) anlegen.
 
 services:
   app:
