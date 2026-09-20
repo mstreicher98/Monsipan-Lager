@@ -1,8 +1,12 @@
 <script lang="ts">
 	import '../app.css';
+	import { onMount } from 'svelte';
 	import { onNavigate } from '$app/navigation';
+	import { syncSystemBars } from '$lib/native';
 
 	let { children } = $props();
+
+	onMount(syncSystemBars);
 
 	// Sanfter Seitenwechsel über die View Transitions API – nur beim Wechsel der Seite,
 	// nicht bei Filteränderungen auf derselben Seite

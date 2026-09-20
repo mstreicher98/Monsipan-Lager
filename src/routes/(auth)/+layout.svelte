@@ -22,7 +22,9 @@
 		</div>
 	</aside>
 
-	<main class="flex items-center justify-center px-5 py-10 sm:px-10">
+	<main
+		class="flex items-center justify-center px-5 pt-[max(2.5rem,env(safe-area-inset-top))] pb-[max(2.5rem,env(safe-area-inset-bottom))] sm:px-10"
+	>
 		<div class="w-full max-w-sm">
 			<div class="mb-10"><Logo /></div>
 			{@render children()}

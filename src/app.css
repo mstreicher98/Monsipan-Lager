@@ -541,7 +541,7 @@ dialog.sheet {
 	border: 0;
 	max-width: min(560px, calc(100vw - 2rem));
 	width: 100%;
-	max-height: calc(100dvh - 2rem);
+	max-height: calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
 	background: var(--c-surface);
 	color: var(--c-ink);
 	border-radius: 20px;
@@ -585,7 +585,7 @@ dialog.sheet[open]::backdrop {
 		margin: auto 0 0;
 		max-width: 100vw;
 		border-radius: 22px 22px 0 0;
-		max-height: 92dvh;
+		max-height: calc(92dvh - env(safe-area-inset-top));
 		transform: translateY(100%);
 		padding-bottom: env(safe-area-inset-bottom);
 	}

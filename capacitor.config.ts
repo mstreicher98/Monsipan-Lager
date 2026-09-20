@@ -20,6 +20,13 @@ const config: CapacitorConfig = {
 	android: {
 		backgroundColor: '#1B2027',
 		allowMixedContent: false
+	},
+	plugins: {
+		// Die Seite zeichnet von Rand zu Rand und hält den Abstand selbst ein
+		SystemBars: {
+			insetsHandling: 'css',
+			initialViewportFitValueHint: 'cover'
+		}
 	}
 };
 
