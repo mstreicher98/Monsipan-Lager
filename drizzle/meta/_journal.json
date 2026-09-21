@@ -36,6 +36,13 @@
       "when": 1789920612736,
       "tag": "0004_inhaber",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1790020296595,
+      "tag": "0005_materialbeschreibungen",
+      "breakpoints": true
     }
   ]
 }

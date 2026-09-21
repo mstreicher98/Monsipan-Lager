@@ -2,7 +2,7 @@ import { and, eq, isNotNull, ne, sql } from 'drizzle-orm';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { createBackup } from './backup';
 import { client, db } from './db';
-import { categories, colors, locations, movements, parties, productCodes, products, stock, users } from './db/schema';
+import { categories, colors, locations, movements, parties, productCodes, productDocuments, products, stock, users } from './db/schema';
 import { seedCatalog } from './db/seed';
 import { broadcast } from './events';
 
@@ -55,6 +55,8 @@ export async function resetAllData(opts: ResetOptions): Promise<{ backup: string
 		await tx.delete(movements);
 		await tx.delete(stock);
 		await tx.delete(productCodes);
+		// Die PDF-Dateien bleiben liegen, bis das tägliche Aufräumen sie nach 90 Tagen entfernt
+		await tx.delete(productDocuments);
 		await tx.delete(products);
 		// Partie-Zuordnung lösen, bevor die Partien verschwinden
 		await tx.update(users).set({ partyId: null });
@@ -68,7 +70,7 @@ export async function resetAllData(opts: ResetOptions): Promise<{ backup: string
 		await tx.delete(colors);
 		// Nummerierung neu beginnen
 		await tx.run(
-			sql`delete from sqlite_sequence where name in ('movements', 'product_codes', 'products', 'parties', 'locations', 'categories', 'colors')`
+			sql`delete from sqlite_sequence where name in ('movements', 'product_codes', 'product_documents', 'products', 'parties', 'locations', 'categories', 'colors')`
 		);
 	});
 

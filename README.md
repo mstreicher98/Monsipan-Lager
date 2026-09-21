@@ -20,9 +20,10 @@ Umlagern, Rückgaben, Inventur, Bestellliste mit Warn-Mails und Auswertungen.
 4. [Datensicherung](#datensicherung)
 5. [Alles zurücksetzen](#alles-zurücksetzen)
 6. [Listen drucken](#listen-drucken)
-7. [App fürs Handy](#app-fürs-handy)
-8. [Scanner einrichten](#scanner-einrichten)
-9. [Technik und Projektstruktur](#technik-und-projektstruktur)
+7. [Materialbeschreibungen (PDF)](#materialbeschreibungen-pdf)
+8. [App fürs Handy](#app-fürs-handy)
+9. [Scanner einrichten](#scanner-einrichten)
+10. [Technik und Projektstruktur](#technik-und-projektstruktur)
 
 ---
 
@@ -221,6 +222,26 @@ sonst hilft der Knopf auf der Seite.
   Mindestbestand“. Ganz rechts ist eine leere Spalte **gezählt** zum Eintragen bei der Inventur.
 - **Bewegungen:** Zeitpunkt, Art, Artikel, Menge mit Vorzeichen, Von/Nach und wer gebucht
   hat. Stornierte Buchungen sind durchgestrichen. Nur für Rollen, die Bewegungen sehen dürfen.
+
+## Materialbeschreibungen (PDF)
+
+Am Artikel lassen sich PDFs hinterlegen – Materialbeschreibungen, Sicherheitsdatenblätter
+und Sonstiges. **Hochladen und entfernen** dürfen nur Admin und Bauleiter, **ansehen**
+alle Angemeldeten. Bis 25 MB je Datei; der Titel wird aus dem Dateinamen vorgeschlagen.
+
+Angezeigt werden die PDFs direkt auf der Seite (pdf.js, wird erst beim Öffnen geladen) –
+auch am Android-Handy und in der Android-App, wo der Browser PDFs sonst nur herunterlädt.
+Im Browser gibt es zusätzlich „Im Browser öffnen“ und „Herunterladen“.
+
+**Ablage:** Die Datenbank kennt nur Titel, Art und Prüfsumme, die Dateien liegen im Volume
+unter `/data/dokumente/<sha256>.pdf`. Dieselbe Datei an mehreren Artikeln liegt nur einmal da.
+Die Sicherungen der Datenbank bleiben dadurch klein.
+
+**Sicherungen:** Wird ein PDF entfernt oder alles zurückgesetzt, bleibt die Datei noch
+90 Tage liegen. Eine in dieser Zeit eingespielte Sicherung findet ihre PDFs also wieder.
+Danach räumt die tägliche Wartung unbenutzte Dateien weg. Für den Umzug auf einen anderen
+Server das ganze Volume mitnehmen (Datenbank **und** `/data/dokumente`) – eine
+hochgeladene Sicherung allein enthält die PDFs nicht.
 
 ## App fürs Handy
 

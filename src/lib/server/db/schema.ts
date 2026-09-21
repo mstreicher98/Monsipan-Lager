@@ -129,6 +129,31 @@ export const productCodes = sqliteTable(
 	(t) => [uniqueIndex('product_codes_normalized_idx').on(t.normalized), index('product_codes_product_idx').on(t.productId)]
 );
 
+/**
+ * Materialbeschreibungen, Sicherheitsdatenblätter usw. als PDF.
+ * Die Datei liegt unter /data/dokumente/<sha256>.pdf – gleiche Dateien nur einmal.
+ */
+export const DOCUMENT_KINDS = ['materialbeschreibung', 'sicherheitsdatenblatt', 'sonstiges'] as const;
+
+export const productDocuments = sqliteTable(
+	'product_documents',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		productId: integer('product_id')
+			.notNull()
+			.references(() => products.id, { onDelete: 'cascade' }),
+		kind: text('kind', { enum: DOCUMENT_KINDS }).notNull().default('materialbeschreibung'),
+		title: text('title').notNull(),
+		/** Ursprünglicher Dateiname, für den Download */
+		fileName: text('file_name').notNull(),
+		sha256: text('sha256').notNull(),
+		size: integer('size').notNull(),
+		uploadedBy: integer('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
+		createdAt: createdAt()
+	},
+	(t) => [index('product_documents_product_idx').on(t.productId)]
+);
+
 export const stock = sqliteTable(
 	'stock',
 	{

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { client, DATA_DIR } from './db';
 import { purgeExpired } from './auth';
+import { tidyDocuments } from './documents';
 
 export const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 
@@ -113,6 +114,7 @@ export function sweepTempFiles(keep?: string) {
 }
 
 let timer: ReturnType<typeof setInterval> | null = null;
+let lastTidy = '';
 
 /** Stündlich prüfen: einmal pro Nacht (ab 2 Uhr) sichern und Altlasten löschen */
 export function scheduleMaintenance() {
@@ -128,6 +130,12 @@ export function scheduleMaintenance() {
 			}
 			await purgeExpired();
 			sweepTempFiles();
+			// PDFs einmal am Tag: benutzte markieren, lange unbenutzte löschen
+			if (lastTidy !== today) {
+				lastTidy = today;
+				const { removed } = await tidyDocuments(now);
+				if (removed) console.info(`[dokumente] ${removed} unbenutzte PDF-Dateien gelöscht`);
+			}
 		} catch (err) {
 			console.error('[backup]', err);
 		}

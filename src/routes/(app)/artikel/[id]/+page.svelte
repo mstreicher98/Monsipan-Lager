@@ -9,6 +9,11 @@
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Trash from '@lucide/svelte/icons/trash';
 	import Barcode from '@lucide/svelte/icons/barcode';
+	import FileText from '@lucide/svelte/icons/file-text';
+	import FileUp from '@lucide/svelte/icons/file-up';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import Dialog from '$lib/components/Dialog.svelte';
+	import { DOCUMENT_KIND_LABELS, fileSizeLabel, MAX_DOCUMENT_BYTES, titleFromFileName, type DocumentKind } from '$lib/documents';
 	import ProductAvatar from '$lib/components/ProductAvatar.svelte';
 	import StockStatus from '$lib/components/StockStatus.svelte';
 	import MovementList from '$lib/components/MovementList.svelte';
@@ -58,6 +63,36 @@
 		} finally {
 			adding = false;
 		}
+	}
+
+	// Materialbeschreibungen (PDF)
+	let uploadOpen = $state(false);
+	let uploadFile = $state<File | null>(null);
+	let uploadTitle = $state('');
+	let uploadKind = $state<DocumentKind>('materialbeschreibung');
+	let uploadError = $state('');
+	let uploading = $state(false);
+	let removeDoc = $state<(typeof data.documents)[number] | null>(null);
+	let removeOpen = $state(false);
+
+	function openUpload() {
+		uploadFile = null;
+		uploadTitle = '';
+		uploadKind = 'materialbeschreibung';
+		uploadError = '';
+		uploadOpen = true;
+	}
+
+	function pickFile(e: Event) {
+		const file = (e.currentTarget as HTMLInputElement).files?.[0] ?? null;
+		uploadError = '';
+		if (file && file.size > MAX_DOCUMENT_BYTES) {
+			uploadError = `Die Datei ist zu groß – erlaubt sind ${fileSizeLabel(MAX_DOCUMENT_BYTES)}.`;
+			uploadFile = null;
+			return;
+		}
+		uploadFile = file;
+		if (file && !uploadTitle.trim()) uploadTitle = titleFromFileName(file.name);
 	}
 
 	const consumption = $derived(data.consumption ?? []);
@@ -177,6 +212,43 @@
 			{#if data.notes}<p class="mt-3 rounded-xl bg-surface-2 p-3 text-sm whitespace-pre-line text-ink-2">{data.notes}</p>{/if}
 		</section>
 
+		<section class="card p-4 lg:p-6" aria-labelledby="h-docs">
+			<div class="flex items-center justify-between gap-3">
+				<h2 id="h-docs" class="flex items-center gap-2 text-xl"><FileText size={20} aria-hidden="true" />Materialbeschreibungen</h2>
+				{#if canManage}
+					<button class="btn btn-secondary btn-sm" onclick={openUpload}><FileUp size={16} aria-hidden="true" />PDF hochladen</button>
+				{/if}
+			</div>
+			<ul class="mt-3 space-y-2">
+				{#each data.documents as doc (doc.id)}
+					<li class="flex items-center gap-2 rounded-xl bg-surface-2 pr-1">
+						<a href="/artikel/{p.id}/dokumente/{doc.id}" class="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-surface-3">
+							<span class="grid size-9 shrink-0 place-items-center rounded-lg bg-danger-soft text-[0.6875rem] font-bold text-danger">PDF</span>
+							<span class="min-w-0 flex-1">
+								<span class="block truncate font-medium">{doc.title}</span>
+								<span class="block text-[0.8125rem] text-ink-3">{DOCUMENT_KIND_LABELS[doc.kind]} · {fileSizeLabel(doc.size)}</span>
+							</span>
+							<ChevronRight size={18} class="shrink-0 text-ink-3" aria-hidden="true" />
+						</a>
+						{#if canManage}
+							<button
+								class="btn btn-ghost btn-sm btn-icon shrink-0 hover:text-danger"
+								aria-label="{doc.title} entfernen"
+								title="Entfernen"
+								onclick={() => ((removeDoc = doc), (removeOpen = true))}
+							>
+								<Trash size={16} />
+							</button>
+						{/if}
+					</li>
+				{:else}
+					<li class="text-sm text-ink-3">
+						Noch keine PDFs hinterlegt.{#if canManage} Materialbeschreibung oder Sicherheitsdatenblatt über „PDF hochladen“ ergänzen.{/if}
+					</li>
+				{/each}
+			</ul>
+		</section>
+
 		<section class="card p-4 lg:p-6" aria-labelledby="h-codes">
 			<h2 id="h-codes" class="flex items-center gap-2 text-xl"><Barcode size={20} aria-hidden="true" />Scanbare Codes</h2>
 			<ul class="mt-3 space-y-2">
@@ -217,3 +289,79 @@
 		<Pagination page={data.page} pageSize={data.pageSize} count={data.historyCount} />
 	</section>
 {/if}
+
+{#if canManage}
+	<Dialog bind:open={uploadOpen} title="PDF hochladen">
+		<form
+			id="doc-form"
+			method="POST"
+			action="?/uploadDocument"
+			enctype="multipart/form-data"
+			class="space-y-4"
+			use:enhance={() => {
+				uploading = true;
+				uploadError = '';
+				return async ({ result, update }) => {
+					uploading = false;
+					if (result.type === 'failure') {
+						uploadError = String(result.data?.docError ?? 'Hochladen fehlgeschlagen');
+						return;
+					}
+					if (result.type === 'success') {
+						uploadOpen = false;
+						toast.success('PDF hochgeladen', String(result.data?.documentAdded ?? ''));
+					}
+					await update();
+				};
+			}}
+		>
+			<div>
+				<label for="doc-file" class="field-label">Datei (PDF, bis {fileSizeLabel(MAX_DOCUMENT_BYTES)})</label>
+				<input id="doc-file" name="file" type="file" accept="application/pdf,.pdf" required class="input py-2" onchange={pickFile} />
+			</div>
+			<div>
+				<label for="doc-title" class="field-label">Titel</label>
+				<input id="doc-title" name="title" class="input" maxlength="120" bind:value={uploadTitle} placeholder="z. B. Technisches Merkblatt" />
+			</div>
+			<fieldset>
+				<legend class="field-label">Art</legend>
+				<div class="grid gap-2 sm:grid-cols-3">
+					{#each Object.entries(DOCUMENT_KIND_LABELS) as [value, label] (value)}
+						<label class="flex cursor-pointer items-center gap-2 rounded-xl border border-line-strong p-2.5 text-sm has-[:checked]:border-ink has-[:checked]:bg-surface-3">
+							<input type="radio" name="kind" {value} bind:group={uploadKind} class="accent-[var(--c-ink)]" />{label}
+						</label>
+					{/each}
+				</div>
+			</fieldset>
+			{#if uploadError}<p class="field-error" role="alert">{uploadError}</p>{/if}
+		</form>
+		{#snippet footer()}
+			<button class="btn btn-secondary" onclick={() => (uploadOpen = false)}>Abbrechen</button>
+			<button class="btn btn-primary" form="doc-form" disabled={!uploadFile || uploading}>{uploading ? 'Wird hochgeladen …' : 'Hochladen'}</button>
+		{/snippet}
+	</Dialog>
+
+	<Dialog bind:open={removeOpen} title="PDF entfernen?">
+		{#if removeDoc}
+			<p class="text-ink-2"><span class="font-medium text-ink">{removeDoc.title}</span> wird von diesem Artikel entfernt.</p>
+		{/if}
+		{#snippet footer()}
+			<button class="btn btn-secondary" onclick={() => (removeOpen = false)}>Abbrechen</button>
+			<form
+				method="POST"
+				action="?/deleteDocument"
+				use:enhance={() =>
+					async ({ result, update }) => {
+						removeOpen = false;
+						if (result.type === 'failure') toast.error(String(result.data?.docError ?? 'Entfernen fehlgeschlagen'));
+						else if (result.type === 'success') toast.success('PDF entfernt');
+						await update();
+					}}
+			>
+				<input type="hidden" name="documentId" value={removeDoc?.id} />
+				<button class="btn btn-danger">Entfernen</button>
+			</form>
+		{/snippet}
+	</Dialog>
+{/if}
+

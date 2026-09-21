@@ -40,6 +40,7 @@
     "@types/nodemailer": "^8.0.2",
     "barcode-detector": "^3.2.2",
     "drizzle-kit": "^0.31.10",
+    "pdfjs-dist": "^6.3.289",
     "svelte": "^5.57.0",
     "svelte-check": "^4.7.6",
     "tailwindcss": "^4.3.3",
