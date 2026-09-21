@@ -59,38 +59,54 @@ function inRoundRect(px, py, x, y, w, h, r) {
 	return (px - cx) ** 2 + (py - cy) ** 2 <= r * r;
 }
 
-const DASHES = [
-	[6, 14.5, 6, 3],
-	[14, 14.5, 6, 3],
-	[22, 14.5, 4, 3]
+const WHITE = [0xf4, 0xf5, 0xf6];
+
+// Fahrbahn von oben im 32er-Raster (wie favicon.svg): weiße Randlinien und eine
+// gelbe unterbrochene Mittellinie, die oben und unten aus dem Bild läuft
+const EDGE_LINES = [
+	[4, 0, 1.6, 32],
+	[26.4, 0, 1.6, 32]
 ];
+const CENTER_DASHES = [-0.8, 6.4, 13.6, 20.8, 28].map((y) => [15, y, 2, 4.8]);
+const inAny = (rects, px, py) => rects.some(([x, y, w, h]) => inRoundRect(px, py, x, y, w, h, 0));
 
 /**
- * Markierungskachel wie favicon.svg.
- * shape: 'rounded' (Kachel), 'circle' (runder Rand), 'full' (randlos), 'none' (nur Striche)
- * scale: Größe der Striche im Verhältnis zur Fläche
+ * Fahrbahn-Kachel.
+ * shape: 'rounded' (Kachel wie favicon.svg), 'circle', 'full' (randlos), 'none' (nur Linien, freigestellt)
+ * scale: rückt die Linien zur Mitte – für Masken, die den Rand abschneiden
  */
 function icon(size, { shape = 'rounded', scale = 1 } = {}) {
 	const SS = 4;
-	const off = (32 - 32 * scale) / 2;
 	return png(size, (x, y) => {
 		let bg = 0;
-		let fg = 0;
+		let white = 0;
+		let yellow = 0;
 		for (let sy = 0; sy < SS; sy++)
 			for (let sx = 0; sx < SS; sx++) {
 				const px = ((x + (sx + 0.5) / SS) / size) * 32;
 				const py = ((y + (sy + 0.5) / SS) / size) * 32;
-				if (shape === 'full') bg++;
-				else if (shape === 'rounded' && inRoundRect(px, py, 0, 0, 32, 32, 9)) bg++;
-				else if (shape === 'circle' && inRoundRect(px, py, 0, 0, 32, 32, 16)) bg++;
-				const qx = (px - off) / scale;
-				const qy = (py - off) / scale;
-				if (DASHES.some(([dx, dy, w, h]) => inRoundRect(qx, qy, dx, dy, w, h, 1))) fg++;
+				const inside =
+					shape === 'full' ||
+					shape === 'none' ||
+					(shape === 'rounded' && inRoundRect(px, py, 0, 0, 32, 32, 6)) ||
+					(shape === 'circle' && inRoundRect(px, py, 0, 0, 32, 32, 16));
+				if (!inside) continue;
+				if (shape !== 'none') bg++;
+				// Nur waagrecht stauchen: die Fahrbahn läuft oben und unten weiter
+				const qx = 16 + (px - 16) / scale;
+				if (inAny(CENTER_DASHES, qx, py)) yellow++;
+				else if (inAny(EDGE_LINES, qx, py)) white++;
 			}
 		const n = SS * SS;
-		const t = fg / n;
-		const color = ASPHALT.map((c, i) => Math.round(c * (1 - t) + YELLOW[i] * t));
-		return [...color, Math.round((Math.max(bg, fg) / n) * 255)];
+		const lines = white + yellow;
+		if (shape === 'none') {
+			if (!lines) return [0, 0, 0, 0];
+			const color = WHITE.map((c, i) => Math.round((c * white + YELLOW[i] * yellow) / lines));
+			return [...color, Math.round((lines / n) * 255)];
+		}
+		if (!bg) return [0, 0, 0, 0];
+		const color = ASPHALT.map((c, i) => Math.round((c * (bg - lines) + WHITE[i] * white + YELLOW[i] * yellow) / bg));
+		return [...color, Math.round((bg / n) * 255)];
 	});
 }
 
@@ -100,8 +116,8 @@ const web = path.resolve('static/icons');
 fs.mkdirSync(web, { recursive: true });
 fs.writeFileSync(path.join(web, 'icon-192.png'), icon(192));
 fs.writeFileSync(path.join(web, 'icon-512.png'), icon(512));
-fs.writeFileSync(path.join(web, 'icon-maskable-512.png'), icon(512, { shape: 'full', scale: 0.72 }));
-fs.writeFileSync(path.join(web, 'apple-touch-icon.png'), icon(180, { shape: 'full', scale: 0.72 }));
+fs.writeFileSync(path.join(web, 'icon-maskable-512.png'), icon(512, { shape: 'full', scale: 0.8 }));
+fs.writeFileSync(path.join(web, 'apple-touch-icon.png'), icon(180, { shape: 'full', scale: 0.9 }));
 console.log('Icons für die Webseite:', web);
 
 /* ------------------------------------------------------- Android-App */
@@ -122,9 +138,10 @@ for (const [density, launcher, adaptive] of DENSITIES) {
 	const dir = path.join(res, `mipmap-${density}`);
 	fs.mkdirSync(dir, { recursive: true });
 	fs.writeFileSync(path.join(dir, 'ic_launcher.png'), icon(launcher));
-	fs.writeFileSync(path.join(dir, 'ic_launcher_round.png'), icon(launcher, { shape: 'circle' }));
-	// Nur die Striche, freigestellt: der Hintergrund kommt als Farbe dazu
-	fs.writeFileSync(path.join(dir, 'ic_launcher_foreground.png'), icon(adaptive, { shape: 'none', scale: 0.58 }));
+	fs.writeFileSync(path.join(dir, 'ic_launcher_round.png'), icon(launcher, { shape: 'circle', scale: 0.8 }));
+	// Nur die Linien, freigestellt: der Asphalt kommt als Farbe dazu. Sichtbar ist
+	// nur die Mitte (72 von 108 dp), deshalb liegen die Randlinien weiter innen.
+	fs.writeFileSync(path.join(dir, 'ic_launcher_foreground.png'), icon(adaptive, { shape: 'none', scale: 0.6 }));
 }
 
 // Der Startbildschirm wird als Zeichnung beschrieben statt als Bild pro Format
