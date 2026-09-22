@@ -323,10 +323,10 @@ automatisch ausgefüllt – oder den Code einem bestehenden Artikel zuordnen.
 
 **SWARCO-Palettenetiketten:** Die DataMatrix enthält vier Felder mit `$` dazwischen,
 z. B. `1524603$30016618$2450240$1000,000` – Liefer-/Palettennummer, Artikelnummer,
-Charge und Menge in kg. Gesucht wird über die Artikelnummer, damit jede Lieferung
-denselben Artikel findet, egal welche Palette und Charge. Beim Anlegen werden
-Artikelnummer, Hersteller (SWARCO) und Inhalt übernommen; die Bezeichnung steht nicht
-im Code und wird von Hand eingetragen.
+Charge und Menge der Palette. Gesucht wird über die Artikelnummer, damit jede Lieferung
+denselben Artikel findet, egal welche Palette und Charge. Beim Anlegen wird nur die
+Artikelnummer übernommen; Bezeichnung, Hersteller und Inhalt je Stück trägt man selbst
+ein (die Menge im Code gilt für die ganze Palette).
 
 **Farben und RAL:** Unter **Stammdaten → Farben** wird eine Farbe über ihre RAL-Nummer
 oder den RAL-Namen gewählt (alle 215 RAL-Classic-Farben, z. B. `6024` oder „Verkehrsgrün“);

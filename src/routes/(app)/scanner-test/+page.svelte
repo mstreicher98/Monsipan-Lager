@@ -44,7 +44,6 @@
 		expiryDate: 'Haltbar bis',
 		color: 'Farbe (erkannt)',
 		category: 'Materialart (erkannt)',
-		manufacturer: 'Hersteller',
 		reference: 'Liefer-/Palettennummer'
 	};
 	const FORMAT_LABELS = {

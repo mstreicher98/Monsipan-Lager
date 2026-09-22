@@ -93,15 +93,17 @@ describe('parseScan', () => {
 		// Inhalt der DataMatrix vom Etikett "SWARCOFLEX 200-800 T18 M20"
 		const p = parseScan('1524603$30016618$2450240$1000,000');
 		expect(p.format).toBe('swarco');
-		expect(p.fields).toMatchObject({
-			manufacturer: 'SWARCO',
-			reference: '1524603',
-			article: '30016618',
-			batch: '2450240',
-			packageSize: 1000,
-			unit: 'kg'
-		});
+		expect(p.fields).toEqual({ reference: '1524603', article: '30016618', batch: '2450240' });
 		expect(p.candidates).toEqual(['30016618']);
+	});
+
+	it('übernimmt vom SWARCO-Etikett weder Inhalt noch Hersteller', () => {
+		// Die Menge gilt für die ganze Palette – Inhalt je Stück und Hersteller trägt man selbst ein
+		const p = parseScan('1524603$30016618$2450240$1000,000');
+		expect(p.fields.packageSize).toBeUndefined();
+		expect(p.fields.unit).toBeUndefined();
+		expect(p.fields.content).toBeUndefined();
+		expect(p.fields).not.toHaveProperty('manufacturer');
 	});
 
 	it('findet jede SWARCO-Lieferung über die Artikelnummer', () => {
@@ -110,7 +112,7 @@ describe('parseScan', () => {
 		const next = parseScan(']d11600111$30016618$2510077$750,500');
 		expect(next.symbology).toBe(']d1');
 		expect(next.candidates).toEqual(first.candidates);
-		expect(next.fields.packageSize).toBe(750.5);
+		expect(next.fields.batch).toBe('2510077');
 	});
 
 	it('hält andere Texte mit Dollarzeichen nicht für SWARCO', () => {

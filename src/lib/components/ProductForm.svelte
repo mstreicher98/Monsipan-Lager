@@ -75,10 +75,6 @@
 			v.articleNumber = p.fields.article;
 			hit.push('articleNumber');
 		}
-		if (p.fields.manufacturer && !v.manufacturer.trim()) {
-			v.manufacturer = p.fields.manufacturer;
-			hit.push('manufacturer');
-		}
 		if (p.fields.packageSize && !v.packageSize.trim()) {
 			v.packageSize = String(p.fields.packageSize).replace('.', ',');
 			if (p.fields.unit && UNITS.some((u) => u.value === p.fields.unit)) v.unit = p.fields.unit;
@@ -117,7 +113,6 @@
 		codes: 'Code',
 		name: 'Name',
 		articleNumber: 'Artikelnummer',
-		manufacturer: 'Hersteller',
 		packageSize: 'Inhalt',
 		colorId: 'Farbe',
 		categoryId: 'Materialart'
@@ -195,7 +190,7 @@
 					<input id="articleNumber" name="articleNumber" class="input" maxlength="60" bind:value={v.articleNumber} />
 					<p class="field-hint">Ist automatisch auch scanbar.</p>
 				</div>
-				<div class={fl('manufacturer')}>
+				<div>
 					<label for="manufacturer" class="field-label">Hersteller / Lieferant</label>
 					<input id="manufacturer" name="manufacturer" class="input" list="manufacturers" maxlength="120" bind:value={v.manufacturer} />
 					<datalist id="manufacturers">{#each manufacturers as m (m)}<option value={m}></option>{/each}</datalist>
