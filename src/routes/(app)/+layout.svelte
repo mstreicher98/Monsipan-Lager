@@ -36,7 +36,7 @@
 			if (scanner.open && scanner.mode === 'continuous') return;
 			try {
 				const r = await lookupScan(scan.variants);
-				if (r.product) feedbackSuccess();
+				if (r.products.length) feedbackSuccess();
 				else feedbackError();
 				result = r;
 				resultOpen = true;

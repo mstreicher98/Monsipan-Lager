@@ -113,7 +113,12 @@ export const products = sqliteTable(
 	(t) => [index('products_name_idx').on(t.name), index('products_article_idx').on(t.articleNumber)]
 );
 
-/** Alle scanbaren Codes eines Artikels (EAN, Artikelnummer, weitere) */
+/**
+ * Alle scanbaren Codes eines Artikels (EAN, Artikelnummer, weitere).
+ * Eine Nummer darf zu mehreren Artikeln gehören – manche Lieferanten drucken
+ * auf verschiedene Produkte dieselbe Nummer. Beim Scannen fragt die App dann,
+ * welcher Artikel gemeint ist.
+ */
 export const productCodes = sqliteTable(
 	'product_codes',
 	{
@@ -126,7 +131,11 @@ export const productCodes = sqliteTable(
 		kind: text('kind', { enum: ['ean', 'artikel', 'sonstige'] }).notNull().default('sonstige'),
 		createdAt: createdAt()
 	},
-	(t) => [uniqueIndex('product_codes_normalized_idx').on(t.normalized), index('product_codes_product_idx').on(t.productId)]
+	(t) => [
+		uniqueIndex('product_codes_product_normalized_idx').on(t.productId, t.normalized),
+		index('product_codes_normalized_idx').on(t.normalized),
+		index('product_codes_product_idx').on(t.productId)
+	]
 );
 
 /**

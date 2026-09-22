@@ -25,8 +25,11 @@ export interface LocationQty {
 	quantity: number;
 }
 
+export type ProductWithLocations = ProductSummary & { locations: LocationQty[] };
+
 export interface LookupResult {
-	product: (ProductSummary & { locations: LocationQty[] }) | null;
+	/** Leer = unbekannter Code; mehrere = dieselbe Nummer gehört zu mehreren Artikeln */
+	products: ProductWithLocations[];
 	parsed: ParsedScan | null;
 	matched: string | null;
 }

@@ -8,6 +8,7 @@
 	import Link from '@lucide/svelte/icons/link';
 	import Dialog from './Dialog.svelte';
 	import ProductAvatar from './ProductAvatar.svelte';
+	import ProductChoice from './ProductChoice.svelte';
 	import StockStatus from './StockStatus.svelte';
 	import ProductSearch from './ProductSearch.svelte';
 	import { int, packageLabel } from '$lib/format';
@@ -24,9 +25,16 @@
 	let { open = $bindable(), result, canBook, canManage }: Props = $props();
 	let assigning = $state(false);
 	let busy = $state(false);
+	let conflict = $state<{ product: ProductSummary; message: string } | null>(null);
+	/** Gewählter Artikel, wenn die Nummer zu mehreren gehört */
+	let chosenId = $state<number | null>(null);
 
-	const product = $derived(result?.product ?? null);
+	const products = $derived(result?.products ?? []);
 	const parsed = $derived(result?.parsed ?? null);
+	const product = $derived(products.length === 1 ? products[0] : (products.find((p) => p.id === chosenId) ?? null));
+	const title = $derived(
+		assigning ? 'Artikel zuordnen' : product ? 'Artikel gefunden' : products.length ? 'Mehrere Artikel' : 'Code nicht gefunden'
+	);
 
 	/** Der Code, der beim Zuordnen gespeichert wird */
 	function primaryCode(p: ParsedScan | null): { code: string; kind: 'ean' | 'artikel' | 'sonstige' } | null {
@@ -39,8 +47,13 @@
 	}
 	const code = $derived(primaryCode(parsed));
 
+	// Jeder neue Scan – und jedes Öffnen und Schließen – fängt von vorn an
 	$effect(() => {
-		if (!open) assigning = false;
+		void result;
+		void open;
+		assigning = false;
+		conflict = null;
+		chosenId = null;
 	});
 
 	function go(href: string) {
@@ -48,17 +61,22 @@
 		goto(href);
 	}
 
-	async function assign(p: ProductSummary) {
+	async function assign(p: ProductSummary, shared = false) {
 		if (!code) return;
 		busy = true;
 		try {
 			const res = await fetch('/api/codes', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ productId: p.id, code: code.code, kind: code.kind })
+				body: JSON.stringify({ productId: p.id, code: code.code, kind: code.kind, shared })
 			});
 			const data = await res.json().catch(() => ({}));
 			if (!res.ok) {
+				// Die Nummer gehört schon zu einem anderen Artikel – nachfragen statt abbrechen
+				if (data.conflict && !shared) {
+					conflict = { product: p, message: data.message };
+					return;
+				}
 				toast.error('Zuordnen nicht möglich', data.message);
 				return;
 			}
@@ -70,8 +88,29 @@
 	}
 </script>
 
-<Dialog bind:open title={product ? 'Artikel gefunden' : 'Code nicht gefunden'}>
-	{#if product}
+{#snippet assignBlock()}
+	{#if conflict}
+		<div class="rounded-2xl bg-surface-2 p-4 text-sm">
+			<p class="font-medium">{conflict.message}</p>
+			<p class="mt-1 text-ink-2">
+				Trotzdem auch „{conflict.product.name}“ zuordnen? Beim Scannen fragt die App dann, welcher Artikel gemeint ist.
+			</p>
+			<div class="mt-3 flex flex-wrap gap-2">
+				<button class="btn btn-primary btn-sm" disabled={busy} onclick={() => assign(conflict!.product, true)}>Trotzdem zuordnen</button>
+				<button class="btn btn-ghost btn-sm" onclick={() => (conflict = null)}>Abbrechen</button>
+			</div>
+		</div>
+	{:else}
+		<p class="field-label">Welchem Artikel gehört der Code?</p>
+		<ProductSearch onselect={(p) => assign(p)} autofocus scanTarget={false} id="assign-search" />
+		{#if busy}<p class="field-hint">Wird zugeordnet …</p>{/if}
+	{/if}
+{/snippet}
+
+<Dialog bind:open {title}>
+	{#if assigning}
+		{@render assignBlock()}
+	{:else if product}
 		<div class="flex items-start gap-4">
 			<ProductAvatar colorHex={product.colorHex} category={product.categoryName} size="lg" />
 			<div class="min-w-0 flex-1">
@@ -114,7 +153,21 @@
 				</button>
 			{/if}
 			<button class="btn btn-ghost {canBook ? '' : 'col-span-2'}" onclick={() => go(`/artikel/${product.id}`)}>Details ansehen</button>
+			{#if products.length > 1}
+				<button class="btn btn-ghost col-span-2" onclick={() => (chosenId = null)}>Zurück zur Auswahl</button>
+			{:else if canManage}
+				<button class="btn btn-ghost col-span-2" onclick={() => (assigning = true)}>
+					<Link size={18} aria-hidden="true" />Nummer gehört auch zu einem anderen Artikel
+				</button>
+			{/if}
 		</div>
+	{:else if products.length}
+		<ProductChoice
+			{products}
+			code={result?.matched ?? code?.code ?? null}
+			batch={parsed?.fields.batch ?? null}
+			onselect={(p) => (chosenId = p.id)}
+		/>
 	{:else if result}
 		<div class="flex items-start gap-3 rounded-2xl bg-surface-2 p-4">
 			<CircleHelp size={22} class="mt-0.5 shrink-0 text-ink-3" aria-hidden="true" />
@@ -135,23 +188,15 @@
 		</div>
 
 		{#if canManage}
-			{#if assigning}
-				<div class="mt-5">
-					<p class="field-label">Welchem Artikel gehört der Code?</p>
-					<ProductSearch onselect={assign} autofocus scanTarget={false} id="assign-search" />
-					{#if busy}<p class="field-hint">Wird zugeordnet …</p>{/if}
-				</div>
-			{:else}
-				<div class="mt-5 grid gap-2 sm:grid-cols-2">
-					<button class="btn btn-primary" onclick={() => go(`/artikel/neu?scan=${encodeURIComponent(parsed?.input ?? '')}`)}>
-						<Plus size={18} aria-hidden="true" />Neuen Artikel anlegen
-					</button>
-					<button class="btn btn-secondary" onclick={() => (assigning = true)}>
-						<Link size={18} aria-hidden="true" />Artikel zuordnen
-					</button>
-				</div>
-				<p class="field-hint">Zuordnen, wenn der Artikel schon existiert, aber z. B. vom Lieferanten einen neuen Barcode bekommen hat.</p>
-			{/if}
+			<div class="mt-5 grid gap-2 sm:grid-cols-2">
+				<button class="btn btn-primary" onclick={() => go(`/artikel/neu?scan=${encodeURIComponent(parsed?.input ?? '')}`)}>
+					<Plus size={18} aria-hidden="true" />Neuen Artikel anlegen
+				</button>
+				<button class="btn btn-secondary" onclick={() => (assigning = true)}>
+					<Link size={18} aria-hidden="true" />Artikel zuordnen
+				</button>
+			</div>
+			<p class="field-hint">Zuordnen, wenn der Artikel schon existiert, aber z. B. vom Lieferanten einen neuen Barcode bekommen hat.</p>
 		{:else}
 			<p class="mt-4 text-sm text-ink-2">Bitte die Bauleitung informieren, damit der Artikel angelegt wird.</p>
 		{/if}

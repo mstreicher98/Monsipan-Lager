@@ -4,6 +4,7 @@
 	import { fly } from 'svelte/transition';
 	import X from '@lucide/svelte/icons/x';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
+	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import CodeInput from './CodeInput.svelte';
 	import { UNITS } from '$lib/format';
 	import { displayGtin, normalizeCode, pickBestParse } from '$lib/scan/parse';
@@ -33,10 +34,23 @@
 		colors: { id: number; name: string; ral: string | null; hex: string }[];
 		manufacturers: string[];
 		errors?: Record<string, string>;
+		/** Ein Code gehört schon zu einem anderen Artikel – Rückfrage statt Fehler */
+		codeConflict?: string | null;
 		scan?: string | null;
 		action?: string;
 	}
-	let { mode, initial, initialCodes, categories, colors, manufacturers, errors = {}, scan = null, action = '' }: Props = $props();
+	let {
+		mode,
+		initial,
+		initialCodes,
+		categories,
+		colors,
+		manufacturers,
+		errors = {},
+		codeConflict = null,
+		scan = null,
+		action = ''
+	}: Props = $props();
 
 	// Bewusst nur der Startwert: Die Seite baut das Formular per {#key} neu auf, wenn sich die Vorlage ändert
 	// svelte-ignore state_referenced_locally
@@ -168,6 +182,19 @@
 						</li>
 					{/each}
 				</ul>
+			{/if}
+			{#if codeConflict}
+				<div class="mt-3 flex items-start gap-3 rounded-xl bg-warn-soft p-3 text-sm" role="alert">
+					<TriangleAlert size={18} class="mt-0.5 shrink-0 text-warn" aria-hidden="true" />
+					<div>
+						<p class="font-medium">{codeConflict}</p>
+						<p class="mt-1 text-ink-2">
+							Tragen zwei verschiedene Produkte wirklich dieselbe Nummer, darf sie doppelt vergeben werden – beim Scannen fragt die App
+							dann, welcher Artikel gemeint ist.
+						</p>
+						<button class="btn btn-secondary btn-sm mt-3" name="allowSharedCodes" value="1" disabled={busy}>Trotzdem speichern</button>
+					</div>
+				</div>
 			{/if}
 			{#if filled.length}
 				<p class="mt-3 flex items-center gap-2 text-sm text-ink-2" in:fly={{ y: 4, duration: 200 }}>

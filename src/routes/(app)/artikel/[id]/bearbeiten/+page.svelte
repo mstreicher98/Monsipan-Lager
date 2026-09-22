@@ -48,6 +48,7 @@
 		colors={data.colors}
 		manufacturers={data.manufacturers}
 		errors={form && 'errors' in form ? (form.errors ?? {}) : {}}
+		codeConflict={form && 'codeConflict' in form ? (form.codeConflict ?? null) : null}
 	/>
 {/key}
 

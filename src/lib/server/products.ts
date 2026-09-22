@@ -116,6 +116,10 @@ export async function quickSearch(q: string, limit = 8, includeInactive = false)
 
 /* --------------------------------------------------------------- Codes */
 
+/**
+ * Artikel zu einem gescannten Code. Es können mehrere sein, wenn dieselbe
+ * Nummer bei mehreren Artikeln hinterlegt ist – dann muss der Scan nachfragen.
+ */
 export async function lookupByCandidates(candidates: string[]) {
 	if (!candidates.length) return null;
 	const rows = await db
@@ -124,13 +128,35 @@ export async function lookupByCandidates(candidates: string[]) {
 		.where(inArray(productCodes.normalized, candidates))
 		.all();
 	for (const c of candidates) {
-		const hit = rows.find((r) => r.normalized === c);
-		if (hit) {
-			const product = await summaryQuery().where(eq(products.id, hit.productId)).get();
-			if (product) return { product, matched: c };
-		}
+		const ids = rows.filter((r) => r.normalized === c).map((r) => r.productId);
+		if (!ids.length) continue;
+		const found = await summaryQuery()
+			.where(inArray(products.id, ids))
+			.orderBy(products.name)
+			.limit(20)
+			.all();
+		if (found.length) return { products: found, matched: c };
 	}
 	return null;
+}
+
+/** Artikel, die dieselben Codes tragen – für den Hinweis auf der Artikelseite */
+export async function sharedCodeOwners(productId: number, normalized: string[], conn: Conn = db) {
+	const map = new Map<string, { id: number; name: string }[]>();
+	if (!normalized.length) return map;
+	const rows = await conn
+		.select({ normalized: productCodes.normalized, id: products.id, name: products.name })
+		.from(productCodes)
+		.innerJoin(products, eq(products.id, productCodes.productId))
+		.where(and(inArray(productCodes.normalized, normalized), ne(productCodes.productId, productId)))
+		.orderBy(products.name)
+		.all();
+	for (const r of rows) {
+		const list = map.get(r.normalized) ?? [];
+		list.push({ id: r.id, name: r.name });
+		map.set(r.normalized, list);
+	}
+	return map;
 }
 
 export class CodeConflictError extends Error {
@@ -147,8 +173,18 @@ export interface CodeInput {
 	kind: 'ean' | 'artikel' | 'sonstige';
 }
 
-/** Setzt die Codes eines Artikels; die Artikelnummer ist immer auch scanbar */
-export async function syncCodes(tx: Tx, productId: number, articleNumber: string | null, codes: CodeInput[]) {
+/**
+ * Setzt die Codes eines Artikels; die Artikelnummer ist immer auch scanbar.
+ * Gehört ein Code schon zu einem anderen Artikel, gibt es einen CodeConflictError –
+ * mit `allowShared` wird er trotzdem vergeben (bestätigte Doppelvergabe).
+ */
+export async function syncCodes(
+	tx: Tx,
+	productId: number,
+	articleNumber: string | null,
+	codes: CodeInput[],
+	{ allowShared = false }: { allowShared?: boolean } = {}
+) {
 	const wanted = new Map<string, CodeInput>();
 	if (articleNumber?.trim()) {
 		const n = normalizeCode(articleNumber);
@@ -159,7 +195,7 @@ export async function syncCodes(tx: Tx, productId: number, articleNumber: string
 		if (n && !wanted.has(n)) wanted.set(n, { code: c.code.trim(), kind: c.kind });
 	}
 	const keys = [...wanted.keys()];
-	if (keys.length) {
+	if (keys.length && !allowShared) {
 		const taken = await tx
 			.select({ normalized: productCodes.normalized, name: products.name })
 			.from(productCodes)
@@ -174,18 +210,25 @@ export async function syncCodes(tx: Tx, productId: number, articleNumber: string
 	}
 }
 
-export async function addCode(productId: number, code: string, kind: CodeInput['kind'] = 'sonstige') {
+export async function addCode(
+	productId: number,
+	code: string,
+	kind: CodeInput['kind'] = 'sonstige',
+	{ allowShared = false }: { allowShared?: boolean } = {}
+) {
 	const normalized = normalizeCode(code);
 	if (!normalized) throw new Error('Leerer Code');
 	await db.transaction(async (tx) => {
-		const existing = await tx
+		const rows = await tx
 			.select({ productId: productCodes.productId, name: products.name })
 			.from(productCodes)
 			.innerJoin(products, eq(products.id, productCodes.productId))
 			.where(eq(productCodes.normalized, normalized))
-			.get();
-		if (existing && existing.productId !== productId) throw new CodeConflictError(code, existing.name);
-		if (!existing) await tx.insert(productCodes).values({ productId, code: code.trim(), normalized, kind });
+			.all();
+		if (rows.some((r) => r.productId === productId)) return;
+		const other = rows[0];
+		if (other && !allowShared) throw new CodeConflictError(code, other.name);
+		await tx.insert(productCodes).values({ productId, code: code.trim(), normalized, kind });
 		await refreshSearchText(tx, productId);
 	});
 }

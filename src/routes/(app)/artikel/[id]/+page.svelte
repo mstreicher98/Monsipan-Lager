@@ -37,25 +37,36 @@
 
 	let newCode = $state('');
 	let adding = $state(false);
+	/** Der Code gehört schon zu einem anderen Artikel – erst nachfragen */
+	let codeConflict = $state<{ code: string; kind: 'ean' | 'artikel' | 'sonstige'; message: string } | null>(null);
 
 	async function addCode(variants: string[]) {
 		const parsed = pickBestParse(variants);
 		if (!parsed) return;
 		const code = parsed.gtin ? displayGtin(parsed.gtin) : (parsed.fields.ean ?? parsed.fields.article ?? parsed.text);
 		const kind = parsed.gtin || parsed.fields.ean ? 'ean' : parsed.fields.article ? 'artikel' : 'sonstige';
+		await postCode(code, kind);
+	}
+
+	async function postCode(code: string, kind: 'ean' | 'artikel' | 'sonstige', shared = false) {
 		adding = true;
 		try {
 			const res = await fetch('/api/codes', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ productId: p.id, code, kind })
+				body: JSON.stringify({ productId: p.id, code, kind, shared })
 			});
 			const body = await res.json().catch(() => ({}));
 			if (!res.ok) {
 				feedbackError();
+				if (body.conflict && !shared) {
+					codeConflict = { code, kind, message: body.message };
+					return;
+				}
 				toast.error('Code nicht hinzugefügt', body.message);
 				return;
 			}
+			codeConflict = null;
 			feedbackSuccess();
 			newCode = '';
 			toast.success('Code hinzugefügt', code);
@@ -256,7 +267,11 @@
 					<li class="flex items-center gap-3 rounded-xl bg-surface-2 px-3 py-2">
 						<div class="min-w-0 flex-1">
 							<p class="num truncate font-medium">{c.display}</p>
-							<p class="text-[0.8125rem] text-ink-3">{KIND_LABEL[c.kind]}</p>
+							<p class="text-[0.8125rem] text-ink-3">
+								{KIND_LABEL[c.kind]}{#if c.sharedWith.length}
+									· gehört auch zu {#each c.sharedWith as s, i (s.id)}<a href="/artikel/{s.id}" class="underline hover:text-ink">{s.name}</a>{#if i < c.sharedWith.length - 1}, {/if}{/each}
+								{/if}
+							</p>
 						</div>
 						{#if canManage && c.kind !== 'artikel'}
 							<form method="POST" action="?/removeCode" use:enhance>
@@ -273,7 +288,20 @@
 				<div class="mt-4">
 					<label for="new-code" class="field-label">Code hinzufügen</label>
 					<CodeInput id="new-code" bind:value={newCode} placeholder="Scannen oder eintippen" oncode={addCode} disabled={adding} />
-					<p class="field-hint">Z. B. ein zweiter Barcode vom Lieferanten.</p>
+					{#if codeConflict}
+						<div class="mt-3 rounded-xl bg-warn-soft p-3 text-sm" role="alert">
+							<p class="font-medium">{codeConflict.message}</p>
+							<p class="mt-1 text-ink-2">Trotzdem auch hier hinterlegen? Beim Scannen fragt die App dann, welcher Artikel gemeint ist.</p>
+							<div class="mt-3 flex flex-wrap gap-2">
+								<button class="btn btn-secondary btn-sm" disabled={adding} onclick={() => postCode(codeConflict!.code, codeConflict!.kind, true)}>
+									Trotzdem hinzufügen
+								</button>
+								<button class="btn btn-ghost btn-sm" onclick={() => (codeConflict = null)}>Abbrechen</button>
+							</div>
+						</div>
+					{:else}
+						<p class="field-hint">Z. B. ein zweiter Barcode vom Lieferanten.</p>
+					{/if}
 				</div>
 			{/if}
 		</section>

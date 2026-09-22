@@ -28,8 +28,10 @@ export const actions: Actions = {
 		requirePermission(locals, 'products.manage');
 		const form = await request.formData();
 		const parsed = parseProductForm(form);
-		if (!parsed.ok) return fail(400, { values: parsed.values, errors: parsed.errors });
+		if (!parsed.ok) return fail(400, { values: parsed.values, errors: parsed.errors, codeConflict: null });
 		const d = parsed.data;
+		// „Trotzdem speichern“ nach der Rückfrage: Nummer darf zu mehreren Artikeln gehören
+		const allowShared = form.get('allowSharedCodes') === '1';
 		let id: number;
 		try {
 			id = await db.transaction(async (tx) => {
@@ -51,12 +53,12 @@ export const actions: Actions = {
 					})
 					.returning({ id: products.id })
 					.get();
-				await syncCodes(tx, row.id, d.articleNumber, d.codes);
+				await syncCodes(tx, row.id, d.articleNumber, d.codes, { allowShared });
 				await refreshSearchText(tx, row.id);
 				return row.id;
 			});
 		} catch (err) {
-			if (err instanceof CodeConflictError) return fail(400, { values: parsed.values, errors: { codes: err.message } });
+			if (err instanceof CodeConflictError) return fail(400, { values: parsed.values, errors: {}, codeConflict: err.message });
 			throw err;
 		}
 		if (form.get('intent') === 'next') return { created: { id, name: d.name } };

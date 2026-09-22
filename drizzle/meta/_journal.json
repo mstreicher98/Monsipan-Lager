@@ -43,6 +43,13 @@
       "when": 1790020296595,
       "tag": "0005_materialbeschreibungen",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790112211196,
+      "tag": "0006_geteilte_codes",
+      "breakpoints": true
     }
   ]
 }

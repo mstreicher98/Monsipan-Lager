@@ -34,6 +34,7 @@
 		colors={data.colors}
 		manufacturers={data.manufacturers}
 		errors={form?.errors ?? {}}
+		codeConflict={form?.codeConflict ?? null}
 		scan={form ? null : data.scan}
 	/>
 {/key}

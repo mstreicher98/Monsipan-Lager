@@ -12,7 +12,9 @@
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 	import Check from '@lucide/svelte/icons/check';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
+	import Dialog from '$lib/components/Dialog.svelte';
 	import ProductAvatar from '$lib/components/ProductAvatar.svelte';
+	import ProductChoice from '$lib/components/ProductChoice.svelte';
 	import ProductSearch from '$lib/components/ProductSearch.svelte';
 	import QuantityStepper from '$lib/components/QuantityStepper.svelte';
 	import { int, packageLabel } from '$lib/format';
@@ -62,6 +64,9 @@
 	let done = $state<{ count: number; units: number; type: MovementType } | null>(null);
 	let restored = $state(false);
 	let loadingLocation = $state(false);
+	/** Auswahl, wenn ein Code zu mehreren Artikeln gehört */
+	let choice = $state<{ products: P[]; code: string | null; batch: string | null } | null>(null);
+	let choiceOpen = $state(false);
 	let nextKey = 1;
 
 	const meta = $derived(MOVEMENT_META[type]);
@@ -157,25 +162,39 @@
 		addProduct(await res.json());
 	}
 
+	/** Gescannten Artikel in die Liste übernehmen */
+	function acceptProduct(p: P) {
+		if (!p.active) {
+			feedbackError();
+			scanner.report(false, `${p.name} ist deaktiviert`);
+			if (!scanner.open) toast.error('Artikel ist deaktiviert', p.name);
+			return;
+		}
+		feedbackSuccess();
+		addProduct(p);
+		const line = lines.find((l) => l.product.id === p.id);
+		scanner.report(true, `${p.name}${line?.quantity && type !== 'INVENTORY' ? ` – ${line.quantity} Stück` : ''}`);
+	}
+
 	async function handleScan(variants: string[]) {
 		try {
 			const r = await lookupScan(variants);
-			if (!r.product) {
+			if (!r.products.length) {
 				feedbackError();
 				scanner.report(false, 'Unbekannter Code – Artikel zuerst anlegen');
 				if (!scanner.open) toast.error('Unbekannter Code', r.parsed?.fields.name ?? r.parsed?.text ?? undefined);
 				return;
 			}
-			if (!r.product.active) {
+			// Dieselbe Nummer bei mehreren Artikeln: nachfragen statt raten
+			if (r.products.length > 1) {
 				feedbackError();
-				scanner.report(false, `${r.product.name} ist deaktiviert`);
-				if (!scanner.open) toast.error('Artikel ist deaktiviert', r.product.name);
+				scanner.report(false, 'Mehrere Artikel – bitte auswählen');
+				scanner.close();
+				choice = { products: r.products, code: r.matched, batch: r.parsed?.fields.batch ?? null };
+				choiceOpen = true;
 				return;
 			}
-			feedbackSuccess();
-			addProduct(r.product);
-			const line = lines.find((l) => l.product.id === r.product!.id);
-			scanner.report(true, `${r.product.name}${line?.quantity && type !== 'INVENTORY' ? ` – ${line.quantity} Stück` : ''}`);
+			acceptProduct(r.products[0]);
 		} catch {
 			feedbackError();
 			toast.error('Suche fehlgeschlagen', 'Bitte Verbindung prüfen.');
@@ -554,6 +573,21 @@
 
 <!-- Platz für die Abschlussleiste am Handy -->
 {#if lines.length}<div class="h-24 lg:hidden" aria-hidden="true"></div>{/if}
+
+<Dialog bind:open={choiceOpen} title="Mehrere Artikel">
+	{#if choice}
+		<ProductChoice
+			products={choice.products}
+			code={choice.code}
+			batch={choice.batch}
+			onselect={(p) => {
+				const hit = choice?.products.find((x) => x.id === p.id);
+				choiceOpen = false;
+				if (hit) acceptProduct(hit);
+			}}
+		/>
+	{/if}
+</Dialog>
 
 {#if done}
 	<div class="pointer-events-none fixed inset-0 z-[65] grid place-items-center p-6" transition:fade={{ duration: 200 }}>

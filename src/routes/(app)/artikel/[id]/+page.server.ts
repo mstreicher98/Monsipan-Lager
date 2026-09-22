@@ -6,7 +6,7 @@ import { DocumentError, listDocuments, storeDocument } from '$lib/server/documen
 import { requirePermission, requireUser, str } from '$lib/server/guard';
 import { titleFromFileName, type DocumentKind } from '$lib/documents';
 import { consumptionByMonth, countMovements, listMovements } from '$lib/server/movements';
-import { productWithLocations, refreshSearchText } from '$lib/server/products';
+import { productWithLocations, refreshSearchText, sharedCodeOwners } from '$lib/server/products';
 import { displayGtin } from '$lib/scan/parse';
 import { can } from '$lib/permissions';
 import type { Actions, PageServerLoad } from './$types';
@@ -39,10 +39,20 @@ export const load: PageServerLoad = async ({ params, url, depends, locals }) => 
 		listDocuments(id)
 	]);
 
+	// Dieselbe Nummer kann zu mehreren Artikeln gehören – das gehört hier sichtbar hin
+	const shared = await sharedCodeOwners(
+		id,
+		codes.map((c) => c.normalized)
+	);
+
 	return {
 		product,
 		notes: full?.notes ?? '',
-		codes: codes.map((c) => ({ ...c, display: c.kind === 'ean' ? displayGtin(c.normalized) : c.code })),
+		codes: codes.map((c) => ({
+			...c,
+			display: c.kind === 'ean' ? displayGtin(c.normalized) : c.code,
+			sharedWith: shared.get(c.normalized) ?? []
+		})),
 		history,
 		historyCount,
 		page,

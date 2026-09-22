@@ -15,6 +15,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	const parsed = pickBestParse(variants);
 	const hit = await lookupByCandidates(allCandidates(variants));
-	const product = hit ? await productWithLocations(hit.product.id) : null;
-	return json({ product, parsed, matched: hit?.matched ?? null } satisfies LookupResult);
+	const found = hit ? await Promise.all(hit.products.map((p) => productWithLocations(p.id))) : [];
+	const products = found.filter((p) => p !== null);
+	return json({ products, parsed, matched: hit?.matched ?? null } satisfies LookupResult);
 };

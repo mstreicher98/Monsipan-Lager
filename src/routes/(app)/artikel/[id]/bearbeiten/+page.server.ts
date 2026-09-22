@@ -58,9 +58,12 @@ export const actions: Actions = {
 	save: async ({ request, locals, params }) => {
 		requirePermission(locals, 'products.manage');
 		const id = Number(params.id);
-		const parsed = parseProductForm(await request.formData());
-		if (!parsed.ok) return fail(400, { values: parsed.values, errors: parsed.errors });
+		const form = await request.formData();
+		const parsed = parseProductForm(form);
+		if (!parsed.ok) return fail(400, { values: parsed.values, errors: parsed.errors, codeConflict: null });
 		const d = parsed.data;
+		// „Trotzdem speichern“ nach der Rückfrage: Nummer darf zu mehreren Artikeln gehören
+		const allowShared = form.get('allowSharedCodes') === '1';
 		try {
 			await db.transaction(async (tx) => {
 				await tx
@@ -82,11 +85,11 @@ export const actions: Actions = {
 						updatedAt: new Date()
 					})
 					.where(eq(products.id, id));
-				await syncCodes(tx, id, d.articleNumber, d.codes);
+				await syncCodes(tx, id, d.articleNumber, d.codes, { allowShared });
 				await refreshSearchText(tx, id);
 			});
 		} catch (err) {
-			if (err instanceof CodeConflictError) return fail(400, { values: parsed.values, errors: { codes: err.message } });
+			if (err instanceof CodeConflictError) return fail(400, { values: parsed.values, errors: {}, codeConflict: err.message });
 			throw err;
 		}
 		redirect(303, `/artikel/${id}`);

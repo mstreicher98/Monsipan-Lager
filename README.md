@@ -328,6 +328,13 @@ denselben Artikel findet, egal welche Palette und Charge. Beim Anlegen wird nur 
 Artikelnummer übernommen; Bezeichnung, Hersteller und Inhalt je Stück trägt man selbst
 ein (die Menge im Code gilt für die ganze Palette).
 
+**Dieselbe Nummer bei zwei Artikeln:** Manche Lieferanten drucken auf verschiedene
+Produkte dieselbe Nummer. Beim Speichern kommt deshalb erst die Rückfrage „gehört schon
+zu …“; mit **Trotzdem speichern** wird die Nummer doppelt vergeben. Beim Scannen zeigt
+die App dann alle Artikel mit dieser Nummer zur Auswahl – auch beim Buchen – statt
+stillschweigend den falschen zu nehmen. Auf der Artikelseite steht unter dem Code, zu
+welchen anderen Artikeln er ebenfalls gehört.
+
 **Farben und RAL:** Unter **Stammdaten → Farben** wird eine Farbe über ihre RAL-Nummer
 oder den RAL-Namen gewählt (alle 215 RAL-Classic-Farben, z. B. `6024` oder „Verkehrsgrün“);
 das Farbmuster wird übernommen und lässt sich per Hex-Wert anpassen. Farben ohne

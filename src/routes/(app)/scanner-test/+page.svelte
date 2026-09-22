@@ -86,7 +86,7 @@
 				const r = await lookupScan(scan.variants);
 				const e = entries.find((x) => x.id === entry.id);
 				if (e) e.result = r;
-				if (r.product) feedbackSuccess();
+				if (r.products.length) feedbackSuccess();
 				else feedbackError();
 			} catch {
 				feedbackError();
@@ -272,17 +272,26 @@
 			<div class="flex flex-wrap items-center gap-2">
 				<span class="badge">{SOURCE_LABELS[e.scan.source]}</span>
 				<span class="badge badge-info">{FORMAT_LABELS[best.format]}</span>
-				{#if e.result?.product}
-					<span class="badge badge-ok"><CircleCheck size={13} aria-hidden="true" />Artikel gefunden</span>
+				{#if e.result?.products.length}
+					<span class="badge badge-ok">
+						<CircleCheck size={13} aria-hidden="true" />
+						{e.result.products.length === 1 ? 'Artikel gefunden' : `${e.result.products.length} Artikel mit diesem Code`}
+					</span>
 				{:else if e.result}
 					<span class="badge badge-warn"><CircleHelp size={13} aria-hidden="true" />Kein Artikel</span>
 				{/if}
 				<span class="ml-auto text-sm text-ink-3">{e.at.toLocaleTimeString('de-AT')}</span>
 			</div>
 
-			{#if e.result?.product}
-				<a href="/artikel/{e.result.product.id}" class="mt-3 block text-lg font-semibold hover:underline">{e.result.product.name}</a>
-				<p class="text-sm text-ink-3">Gefunden über Code {e.result.matched}</p>
+			{#if e.result?.products.length}
+				<div class="mt-3">
+					{#each e.result.products as p (p.id)}
+						<a href="/artikel/{p.id}" class="block text-lg font-semibold hover:underline">{p.name}</a>
+					{/each}
+					<p class="text-sm text-ink-3">
+						Gefunden über Code {e.result.matched}{e.result.products.length > 1 ? ' – beim Scannen fragt die App nach' : ''}
+					</p>
+				</div>
 			{/if}
 
 			<div class="mt-4 grid gap-4 lg:grid-cols-2">
