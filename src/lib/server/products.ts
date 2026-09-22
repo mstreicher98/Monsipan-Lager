@@ -91,7 +91,7 @@ export async function searchCondition(q: string): Promise<SQL | undefined> {
 	const query = q.trim();
 	if (!query) return undefined;
 	const parsed = parseScan(query);
-	if ((parsed.format === 'kv' || parsed.format === 'gs1') && parsed.candidates.length) {
+	if ((parsed.format === 'kv' || parsed.format === 'gs1' || parsed.format === 'swarco') && parsed.candidates.length) {
 		const ids = await db
 			.select({ id: productCodes.productId })
 			.from(productCodes)

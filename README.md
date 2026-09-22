@@ -4,7 +4,7 @@ Lagerverwaltung für die Bodenmarkierung: Bestand je Lagerort, Ein-/Ausbuchen pe
 Umlagern, Rückgaben, Inventur, Bestellliste mit Warn-Mails und Auswertungen.
 
 - **Scannen** mit USB-/Bluetooth-Handscanner am PC oder mit der Handykamera
-  (EAN, GTIN-14, Code 128, GS1 und die Kansai-DataMatrix mit `bez:`/`art:`/`inh:` …)
+  (EAN, GTIN-14, Code 128, GS1, die Kansai-DataMatrix mit `bez:`/`art:`/`inh:` … und SWARCO-Palettenetiketten)
 - **Handy und PC**, als App installierbar: Android-App zum Herunterladen oder als Web-App, Hell- und Dunkelmodus
 - **Live**: Buchungen auf einem Gerät erscheinen sofort auf allen anderen
 - **Drucken**: Bestand und Bewegungen aufs Papier, mit Zählspalte für die Inventur
@@ -320,6 +320,13 @@ Scanner-Bibliothek (~1 MB) wird erst geladen, wenn die Kamera zum ersten Mal ge�
 **Unbekannter Code:** Bauleitung und Admin können direkt einen Artikel anlegen – bei
 Kansai-DataMatrix werden Bezeichnung, Artikelnummer, Inhalt, Farbe und Materialart
 automatisch ausgefüllt – oder den Code einem bestehenden Artikel zuordnen.
+
+**SWARCO-Palettenetiketten:** Die DataMatrix enthält vier Felder mit `$` dazwischen,
+z. B. `1524603$30016618$2450240$1000,000` – Liefer-/Palettennummer, Artikelnummer,
+Charge und Menge in kg. Gesucht wird über die Artikelnummer, damit jede Lieferung
+denselben Artikel findet, egal welche Palette und Charge. Beim Anlegen werden
+Artikelnummer, Hersteller (SWARCO) und Inhalt übernommen; die Bezeichnung steht nicht
+im Code und wird von Hand eingetragen.
 
 **Farben und RAL:** Unter **Stammdaten → Farben** wird eine Farbe über ihre RAL-Nummer
 oder den RAL-Namen gewählt (alle 215 RAL-Classic-Farben, z. B. `6024` oder „Verkehrsgrün“);

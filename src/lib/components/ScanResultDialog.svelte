@@ -125,6 +125,11 @@
 					<p class="mt-2 text-sm text-ink-2">
 						Erkannt: <span class="font-medium text-ink">{parsed.fields.name}</span>{#if parsed.fields.content}, {parsed.fields.content}{/if}
 					</p>
+				{:else if parsed?.fields.manufacturer}
+					<p class="mt-2 text-sm text-ink-2">
+						Erkannt: <span class="font-medium text-ink">{parsed.fields.manufacturer}-Etikett</span>, Artikelnummer
+						<span class="num">{parsed.fields.article}</span>{#if parsed.fields.batch}, Charge <span class="num">{parsed.fields.batch}</span>{/if}{#if parsed.fields.content}, {parsed.fields.content}{/if}
+					</p>
 				{/if}
 			</div>
 		</div>

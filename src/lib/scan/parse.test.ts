@@ -88,6 +88,36 @@ describe('parseScan', () => {
 	it('liest Code-128-Texte', () => {
 		expect(parseScan('FS910022375').candidates).toEqual(['FS910022375']);
 	});
+
+	it('zerlegt das SWARCO-Palettenetikett', () => {
+		// Inhalt der DataMatrix vom Etikett "SWARCOFLEX 200-800 T18 M20"
+		const p = parseScan('1524603$30016618$2450240$1000,000');
+		expect(p.format).toBe('swarco');
+		expect(p.fields).toMatchObject({
+			manufacturer: 'SWARCO',
+			reference: '1524603',
+			article: '30016618',
+			batch: '2450240',
+			packageSize: 1000,
+			unit: 'kg'
+		});
+		expect(p.candidates).toEqual(['30016618']);
+	});
+
+	it('findet jede SWARCO-Lieferung über die Artikelnummer', () => {
+		const first = parseScan('1524603$30016618$2450240$1000,000');
+		// Andere Palette, andere Charge, mit AIM-Kennung des Scanners
+		const next = parseScan(']d11600111$30016618$2510077$750,500');
+		expect(next.symbology).toBe(']d1');
+		expect(next.candidates).toEqual(first.candidates);
+		expect(next.fields.packageSize).toBe(750.5);
+	});
+
+	it('hält andere Texte mit Dollarzeichen nicht für SWARCO', () => {
+		expect(parseScan('ABC$123$X').format).toBe('text');
+		expect(parseScan('12$30016618$X').format).toBe('text');
+		expect(parseScan('1524603$30016618').format).toBe('text');
+	});
 });
 
 /* US-Scanner an deutschem PC simulieren */
@@ -97,7 +127,8 @@ const US_REVERSE: Record<string, [string, boolean]> = {
 	' ': ['Space', false],
 	'.': ['Period', false],
 	',': ['Comma', false],
-	'>': ['Period', true]
+	'>': ['Period', true],
+	$: ['Digit4', true]
 };
 
 function typeOnUsScanner(text: string): KeyStroke[] {
@@ -139,5 +170,11 @@ describe('Tastaturlayout', () => {
 	it('lässt reine Ziffern unverändert', () => {
 		const variants = strokeVariants(typeOnUsScanner('9002445052683'));
 		expect(variants).toEqual(['9002445052683']);
+	});
+
+	it('liest SWARCO-Etiketten auch von einem US-Scanner', () => {
+		const best = pickBestParse(strokeVariants(typeOnUsScanner('1524603$30016618$2450240$1000,000')));
+		expect(best?.format).toBe('swarco');
+		expect(best?.candidates).toEqual(['30016618']);
 	});
 });

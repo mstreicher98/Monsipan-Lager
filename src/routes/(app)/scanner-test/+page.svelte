@@ -43,9 +43,17 @@
 		productionDate: 'Produziert',
 		expiryDate: 'Haltbar bis',
 		color: 'Farbe (erkannt)',
-		category: 'Materialart (erkannt)'
+		category: 'Materialart (erkannt)',
+		manufacturer: 'Hersteller',
+		reference: 'Liefer-/Palettennummer'
 	};
-	const FORMAT_LABELS = { gtin: 'EAN / GTIN', gs1: 'GS1-Code', kv: 'Hersteller-DataMatrix', text: 'Text / Nummer' };
+	const FORMAT_LABELS = {
+		gtin: 'EAN / GTIN',
+		gs1: 'GS1-Code',
+		kv: 'Hersteller-DataMatrix',
+		swarco: 'SWARCO-Palettenetikett',
+		text: 'Text / Nummer'
+	};
 	const SOURCE_LABELS = { wedge: 'Handscanner', camera: 'Kamera', manual: 'Eingabe' };
 	const LAYOUT_LABELS: Record<Layout, string> = { os: 'Wie vom PC gelesen', us: 'US-Layout', de: 'DE-Layout' };
 	const END_LABELS = { enter: 'Enter', tab: 'Tab', pause: 'Pause (kein Enter)', abbruch: 'Abbruch' };
