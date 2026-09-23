@@ -80,6 +80,14 @@ describe('Codes mehrerer Artikel', () => {
 		expect((await lookupByCandidates(['77001']))?.products).toHaveLength(1);
 	});
 
+	it('findet den Artikel über beide Schreibweisen der Materialnummer', async () => {
+		await createProduct('SWARCOLUX 30 TypIII', '30016705');
+		expect((await lookupByCandidates(['000000000030016705']))?.products.map((p) => p.name)).toEqual(['SWARCOLUX 30 TypIII']);
+		// Andersherum genauso: lange Nummer hinterlegt, kurze gescannt
+		await createProduct('Reaktivperlen 100-600', '000000000030016319');
+		expect((await lookupByCandidates(['30016319']))?.products.map((p) => p.name)).toEqual(['Reaktivperlen 100-600']);
+	});
+
 	it('meldet unbekannte Codes weiterhin als nicht gefunden', async () => {
 		expect(await lookupByCandidates(['9999999999'])).toBeNull();
 	});

@@ -326,7 +326,9 @@ z. B. `1524603$30016618$2450240$1000,000` – Liefer-/Palettennummer, Artikelnum
 Charge und Menge der Palette. Gesucht wird über die Artikelnummer, damit jede Lieferung
 denselben Artikel findet, egal welche Palette und Charge. Beim Anlegen wird nur die
 Artikelnummer übernommen; Bezeichnung, Hersteller und Inhalt je Stück trägt man selbst
-ein (die Menge im Code gilt für die ganze Palette).
+ein (die Menge im Code gilt für die ganze Palette). Die Materialnummer wird mit und ohne
+führende Nullen gefunden – auf dem Etikett steht `30016618`, in der Materialliste des
+Lieferanten `000000000030016618`.
 
 **Dieselbe Nummer bei zwei Artikeln:** Manche Lieferanten drucken auf verschiedene
 Produkte dieselbe Nummer. Beim Speichern kommt deshalb erst die Rückfrage „gehört schon

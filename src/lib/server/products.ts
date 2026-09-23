@@ -2,7 +2,7 @@ import { and, eq, inArray, ne, sql, type SQL } from 'drizzle-orm';
 import { db, type Tx } from './db';
 import { col } from './db/sql';
 import { categories, colors, locations, productCodes, products, stock } from './db/schema';
-import { displayGtin, normalizeCode, parseScan } from '$lib/scan/parse';
+import { displayGtin, normalizeCode, numberForms, parseScan } from '$lib/scan/parse';
 import type { ProductSummary } from '$lib/types';
 
 type Conn = typeof db | Tx;
@@ -92,10 +92,11 @@ export async function searchCondition(q: string): Promise<SQL | undefined> {
 	if (!query) return undefined;
 	const parsed = parseScan(query);
 	if ((parsed.format === 'kv' || parsed.format === 'gs1' || parsed.format === 'swarco') && parsed.candidates.length) {
+		const forms = [...new Set(parsed.candidates.flatMap(numberForms))];
 		const ids = await db
 			.select({ id: productCodes.productId })
 			.from(productCodes)
-			.where(inArray(productCodes.normalized, parsed.candidates))
+			.where(inArray(productCodes.normalized, forms))
 			.all();
 		return ids.length ? inArray(products.id, ids.map((r) => r.id)) : sql`0`;
 	}
@@ -121,13 +122,15 @@ export async function quickSearch(q: string, limit = 8, includeInactive = false)
  * Nummer bei mehreren Artikeln hinterlegt ist – dann muss der Scan nachfragen.
  */
 export async function lookupByCandidates(candidates: string[]) {
-	if (!candidates.length) return null;
+	// Mit und ohne führende Nullen suchen (Etikett: 30016618, Lieferschein: 000000000030016618)
+	const forms = [...new Set(candidates.flatMap(numberForms))];
+	if (!forms.length) return null;
 	const rows = await db
 		.select({ normalized: productCodes.normalized, productId: productCodes.productId })
 		.from(productCodes)
-		.where(inArray(productCodes.normalized, candidates))
+		.where(inArray(productCodes.normalized, forms))
 		.all();
-	for (const c of candidates) {
+	for (const c of forms) {
 		const ids = rows.filter((r) => r.normalized === c).map((r) => r.productId);
 		if (!ids.length) continue;
 		const found = await summaryQuery()

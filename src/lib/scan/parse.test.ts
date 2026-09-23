@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { strokesToText, strokeVariants, type KeyStroke } from './layout';
-import { allCandidates, isValidGtin, normalizeCode, parseScan, pickBestParse } from './parse';
+import { allCandidates, isValidGtin, normalizeCode, numberForms, parseScan, pickBestParse } from './parse';
 
 describe('GTIN', () => {
 	it('prüft Prüfziffern der Etiketten aus dem Lager', () => {
@@ -9,6 +9,14 @@ describe('GTIN', () => {
 		expect(isValidGtin('9002445985684')).toBe(true); // Remo 2000 Radweg Grün
 		expect(isValidGtin('53134375304967')).toBe(true); // 3M Stamark (GTIN-14)
 		expect(isValidGtin('9002445052684')).toBe(false);
+	});
+
+	it('kennt Materialnummern mit und ohne führende Nullen', () => {
+		// Etikett: 30016618, Lieferantenliste: 000000000030016618 – derselbe Artikel
+		expect(numberForms('30016618')).toEqual(['30016618', '000000000030016618']);
+		expect(numberForms('000000000030016618')).toEqual(['000000000030016618', '30016618']);
+		expect(numberForms('09002445022150')).toEqual(['09002445022150']);
+		expect(numberForms('FS910022375')).toEqual(['FS910022375']);
 	});
 
 	it('normalisiert EAN-13 und GTIN-14 auf dieselbe Schreibweise', () => {
